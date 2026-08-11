@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { NumericFormat } from "react-number-format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/db";
@@ -40,6 +40,8 @@ export default function Transactions() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   
+  const [isPending, setIsPending] = useState(false);
+  
   const [isBaixaOpen, setIsBaixaOpen] = useState(false);
   const [baixaTransaction, setBaixaTransaction] = useState<any | null>(null);
   const [baixaAmount, setBaixaAmount] = useState("");
@@ -68,6 +70,13 @@ export default function Transactions() {
   const selectedSubcat = subcategories?.find(s => s.id === subcategoryId);
   const isTransfer = selectedSubcat?.type === 'Transferência';
 
+  // Atualiza automaticamente o checkbox se a data for futura
+  useEffect(() => {
+    const todayString = new Date().toISOString().split("T")[0];
+    const isFuture = new Date(date + "T12:00:00Z").getTime() > new Date(todayString + "T12:00:00Z").getTime();
+    setIsPending(isFuture);
+  }, [date]);
+
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!date || !accountId || !subcategoryId || !amount) return;
@@ -95,9 +104,12 @@ export default function Transactions() {
       d.setUTCMonth(d.getUTCMonth() + (i - 1));
       const currentDate = d.toISOString().split("T")[0];
       
-      const todayString = new Date().toISOString().split("T")[0];
-      const isFuture = new Date(currentDate).getTime() > new Date(todayString).getTime();
-      const txStatus = isFuture ? 'Pendente' : 'Paga';
+      let txStatus = isPending ? 'Pendente' : 'Paga';
+      if (i > 1 && !isPending) {
+         const todayString = new Date().toISOString().split("T")[0];
+         const isFuture = new Date(currentDate).getTime() > new Date(todayString).getTime();
+         if (isFuture) txStatus = 'Pendente';
+      }
       
       if (isTransfer) {
         if (editingTransactionId) {
@@ -208,6 +220,7 @@ export default function Transactions() {
     setDescription(t.description);
     setAmount(Math.abs(t.amount).toString());
     setInstallments(1);
+    setIsPending(t.status === 'Pendente');
     
     if (t.linkedTransactionId) {
       const linkedT = await db.transactions.get(t.linkedTransactionId);
@@ -474,6 +487,19 @@ export default function Transactions() {
                   required
                 />
               </div>
+
+              {!editingTransactionId && (
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="isPending" 
+                    checked={isPending} 
+                    onChange={(e) => setIsPending(e.target.checked)} 
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" 
+                  />
+                  <Label htmlFor="isPending" className="cursor-pointer">É uma previsão de pagamento? (Pendente)</Label>
+                </div>
+              )}
 
               {!editingTransactionId && (
                 <div className="space-y-2">
