@@ -205,6 +205,23 @@ export default function Dashboard() {
     });
   }, [accounts, transactions]);
 
+  const pendingTransactions = useMemo(() => {
+    if (!transactions) return [];
+    
+    return transactions.filter(t => {
+      const tTime = new Date(t.date).getTime();
+      return tTime >= startTimestamp && tTime <= endTimestamp && t.status === 'Pendente';
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .map(t => {
+         const cat = categories?.find(c => c.id === t.categoryId);
+         const subcat = subcategories?.find(s => s.id === t.subcategoryId);
+         return {
+           ...t,
+           categoryName: subcat ? `${cat?.name} > ${subcat.name}` : cat?.name || 'Desconhecida'
+         };
+      });
+  }, [transactions, startTimestamp, endTimestamp, categories, subcategories]);
+
   const totalBalance = accountBalances.reduce((acc, curr) => acc + curr.currentBalance, 0);
 
   const formatCurrency = (val: number) => 
@@ -271,6 +288,40 @@ export default function Dashboard() {
           </Table>
         </CardContent>
       </Card>
+
+      {pendingTransactions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Contas Pendentes (No Período)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingTransactions.map((t) => (
+                  <TableRow key={t.id}>
+                    <TableCell className="font-medium text-orange-600">
+                      {new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                    </TableCell>
+                    <TableCell>{t.categoryName}</TableCell>
+                    <TableCell>{t.description || '-'}</TableCell>
+                    <TableCell className={`text-right font-bold ${t.amount >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                      {formatCurrency(Math.abs(t.amount))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
