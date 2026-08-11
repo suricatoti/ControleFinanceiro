@@ -14,6 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#a855f7', '#ec4899', '#f43f5e'];
 
@@ -21,6 +29,7 @@ export default function Dashboard() {
   const transactions = useLiveQuery(() => db.transactions.toArray());
   const categories = useLiveQuery(() => db.categories.toArray());
   const subcategories = useLiveQuery(() => db.subcategories.toArray());
+  const accounts = useLiveQuery(() => db.accounts.toArray());
 
   const [periodFilter, setPeriodFilter] = useState("Mês Atual");
   const [customStartDate, setCustomStartDate] = useState(() => {
@@ -171,6 +180,33 @@ export default function Dashboard() {
     };
   }, [filteredTransactions, categories, subcategories, showSubcategoriesExpense]);
 
+  // 3. Prepara os saldos atuais das contas (soma de todas as transações até hoje)
+  const accountBalances = useMemo(() => {
+    if (!accounts || !transactions) return [];
+
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const todayTimestamp = today.getTime();
+
+    return accounts.map(acc => {
+      let balance = acc.initialBalance || 0;
+      
+      transactions.forEach(t => {
+        if (t.accountId === acc.id) {
+          const tTime = new Date(t.date).getTime();
+          // Soma apenas transações passadas e de hoje (ignora parcelas futuras pro saldo 'atual')
+          if (tTime <= todayTimestamp) {
+            balance += t.amount;
+          }
+        }
+      });
+
+      return { ...acc, currentBalance: balance };
+    });
+  }, [accounts, transactions]);
+
+  const totalBalance = accountBalances.reduce((acc, curr) => acc + curr.currentBalance, 0);
+
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
@@ -203,6 +239,38 @@ export default function Dashboard() {
           </Select>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Saldos Atuais</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Conta</TableHead>
+                <TableHead className="text-right">Saldo Atual</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {accountBalances.map((acc) => (
+                <TableRow key={acc.id}>
+                  <TableCell className="font-medium">{acc.name}</TableCell>
+                  <TableCell className={`text-right font-bold ${acc.currentBalance >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                    {formatCurrency(acc.currentBalance)}
+                  </TableCell>
+                </TableRow>
+              ))}
+              <TableRow className="bg-muted/50">
+                <TableCell className="font-bold">Total Geral</TableCell>
+                <TableCell className={`text-right font-bold text-lg ${totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                  {formatCurrency(totalBalance)}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
