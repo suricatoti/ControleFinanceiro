@@ -75,10 +75,10 @@ export default function Dashboard() {
     const st = startD.getTime();
     const et = endD.getTime();
 
-    const filtered = transactions.filter(t => {
+    const filtered = transactions?.filter(t => {
       const tTime = new Date(t.date).getTime();
-      return tTime >= st && tTime <= et;
-    });
+      return tTime >= st && tTime <= et && t.status !== 'Pendente';
+    }) || [];
 
     return { filteredTransactions: filtered, startTimestamp: st, endTimestamp: et };
   }, [transactions, periodFilter, customStartDate, customEndDate]);
@@ -194,8 +194,8 @@ export default function Dashboard() {
       transactions.forEach(t => {
         if (t.accountId === acc.id) {
           const tTime = new Date(t.date).getTime();
-          // Soma apenas transações passadas e de hoje (ignora parcelas futuras pro saldo 'atual')
-          if (tTime <= todayTimestamp) {
+          // Soma apenas transações passadas e de hoje, e que não estejam pendentes
+          if (tTime <= todayTimestamp && t.status !== 'Pendente') {
             balance += t.amount;
           }
         }

@@ -21,6 +21,16 @@ export interface Subcategory {
   nature: 'Essencial' | 'Qualidade de Vida' | 'N/A';
 }
 
+export interface Recurrence {
+  id: string;
+  description: string;
+  amount: number;
+  accountId: string;
+  categoryId: string;
+  subcategoryId: string;
+  startDate: string;
+}
+
 export interface Transaction {
   id: string;
   date: string;
@@ -30,6 +40,8 @@ export interface Transaction {
   description: string;
   amount: number;
   linkedTransactionId?: string;
+  recurringGroupId?: string;
+  status?: 'Pendente' | 'Paga';
 }
 
 const db = new Dexie('FinanceDB') as Dexie & {
@@ -37,6 +49,7 @@ const db = new Dexie('FinanceDB') as Dexie & {
   categories: EntityTable<Category, 'id'>;
   subcategories: EntityTable<Subcategory, 'id'>;
   transactions: EntityTable<Transaction, 'id'>;
+  recurrences: EntityTable<Recurrence, 'id'>;
 };
 
 db.version(1).stores({
@@ -64,6 +77,15 @@ db.version(3).stores({
 db.version(4).stores({
   categories: 'id, name',
   subcategories: 'id, name, categoryId, type, frequency, nature',
+});
+
+db.version(5).stores({
+  recurrences: 'id, accountId, categoryId, subcategoryId',
+  transactions: 'id, date, accountId, categoryId, subcategoryId, recurringGroupId, status'
+}).upgrade(tx => {
+  return tx.table('transactions').toCollection().modify(transaction => {
+    transaction.status = 'Paga';
+  });
 });
 
 export { db };

@@ -39,6 +39,11 @@ export default function Transactions() {
 
   const [isOpen, setIsOpen] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
+  
+  const [isBaixaOpen, setIsBaixaOpen] = useState(false);
+  const [baixaTransaction, setBaixaTransaction] = useState<any | null>(null);
+  const [baixaAmount, setBaixaAmount] = useState("");
+
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [accountId, setAccountId] = useState("");
   const [destinationAccountId, setDestinationAccountId] = useState("");
@@ -90,6 +95,10 @@ export default function Transactions() {
       d.setUTCMonth(d.getUTCMonth() + (i - 1));
       const currentDate = d.toISOString().split("T")[0];
       
+      const todayString = new Date().toISOString().split("T")[0];
+      const isFuture = new Date(currentDate).getTime() > new Date(todayString).getTime();
+      const txStatus = isFuture ? 'Pendente' : 'Paga';
+      
       if (isTransfer) {
         if (editingTransactionId) {
           const oldTx = await db.transactions.get(editingTransactionId);
@@ -133,6 +142,7 @@ export default function Transactions() {
           description: currentDesc,
           amount: -Math.abs(currentAmount),
           linkedTransactionId: id2,
+          status: txStatus,
         });
 
         // Entrada (Destino)
@@ -145,6 +155,7 @@ export default function Transactions() {
           description: currentDesc,
           amount: Math.abs(currentAmount),
           linkedTransactionId: id1,
+          status: txStatus,
         });
         }
       } else {
@@ -174,6 +185,7 @@ export default function Transactions() {
             subcategoryId,
             description: currentDesc,
             amount: finalAmount,
+            status: txStatus,
           });
         }
       }
@@ -216,6 +228,32 @@ export default function Transactions() {
     setIsOpen(true);
   };
 
+  const openBaixa = (t: any) => {
+    setBaixaTransaction(t);
+    setBaixaAmount(Math.abs(t.amount).toString());
+    setIsBaixaOpen(true);
+  };
+
+  const handleConfirmBaixa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!baixaTransaction || !baixaAmount) return;
+
+    let finalAmount = parseFloat(baixaAmount);
+    if (baixaTransaction.amount < 0) {
+      finalAmount = -Math.abs(finalAmount);
+    } else {
+      finalAmount = Math.abs(finalAmount);
+    }
+
+    await db.transactions.update(baixaTransaction.id, {
+      amount: finalAmount,
+      status: 'Paga'
+    });
+
+    setIsBaixaOpen(false);
+    setBaixaTransaction(null);
+  };
+
   const handleDelete = async (t: any) => {
     if (t.linkedTransactionId) {
       await db.transactions.delete(t.linkedTransactionId);
@@ -238,6 +276,11 @@ export default function Transactions() {
     if (periodFilter === 'Mês Atual') {
       startD.setDate(1);
       endD.setMonth(endD.getMonth() + 1);
+      endD.setDate(0);
+    } else if (periodFilter === 'Próximo mês') {
+      startD.setMonth(startD.getMonth() + 1);
+      startD.setDate(1);
+      endD.setMonth(endD.getMonth() + 2);
       endD.setDate(0);
     } else if (periodFilter === 'Últimos 30 dias') {
       startD.setDate(startD.getDate() - 30);
@@ -324,6 +367,7 @@ export default function Transactions() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Mês Atual">Mês Atual</SelectItem>
+              <SelectItem value="Próximo mês">Próximo mês</SelectItem>
               <SelectItem value="Últimos 30 dias">Últimos 30 dias</SelectItem>
               <SelectItem value="Últimos 60 dias">Últimos 60 dias</SelectItem>
               <SelectItem value="Últimos 90 dias">Últimos 90 dias</SelectItem>
@@ -452,6 +496,33 @@ export default function Transactions() {
             </form>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={isBaixaOpen} onOpenChange={setIsBaixaOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Dar Baixa na Conta</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleConfirmBaixa} className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label>Valor Efetivamente Pago/Recebido (R$)</Label>
+                <NumericFormat 
+                  customInput={Input}
+                  value={baixaAmount}
+                  onValueChange={(values) => setBaixaAmount(values.value)}
+                  placeholder="R$ 0,00"
+                  thousandSeparator="."
+                  decimalSeparator=","
+                  prefix="R$ "
+                  decimalScale={2}
+                  fixedDecimalScale
+                  required
+                />
+                <p className="text-xs text-muted-foreground">O valor original era de {formatCurrency(Math.abs(baixaTransaction?.amount || 0))}. Altere se o valor real foi diferente.</p>
+              </div>
+              <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">Confirmar Pagamento</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {accounts?.map(acc => {
@@ -499,11 +570,16 @@ export default function Transactions() {
                     </TableCell>
                     <TableCell></TableCell>
                   </TableRow>
-                  {accTransactions.map((t) => (
-                    <TableRow key={t.id}>
+                  {accTransactions.map((t) => {
+                    const isPending = t.status === 'Pendente';
+                    return (
+                    <TableRow key={t.id} className={isPending ? "opacity-60 bg-muted/20" : ""}>
                       <TableCell>{new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</TableCell>
                       <TableCell>{t.categoryName}</TableCell>
-                      <TableCell>{t.description}</TableCell>
+                      <TableCell>
+                        {t.description}
+                        {isPending && <span className="ml-2 text-xs font-bold text-orange-500 bg-orange-100 px-1 py-0.5 rounded">Pendente</span>}
+                      </TableCell>
                       <TableCell className="text-right text-blue-500">
                         {t.amount > 0 ? formatCurrency(t.amount) : '-'}
                       </TableCell>
@@ -515,12 +591,16 @@ export default function Transactions() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleEdit(t)}>Editar</Button>
+                          {isPending ? (
+                            <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => openBaixa(t)}>Baixa</Button>
+                          ) : (
+                            <Button variant="outline" size="sm" onClick={() => handleEdit(t)}>Editar</Button>
+                          )}
                           <Button variant="destructive" size="sm" onClick={() => handleDelete(t)}>Excluir</Button>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )})}
                   {accTransactions.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground py-8">

@@ -3,6 +3,7 @@ import { Layout } from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
+import Recurrences from "./pages/Recurrences";
 import Profile from "./pages/Profile";
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="transacoes" element={<Transactions />} />
           <Route path="cadastros" element={<Categories />} />
+          <Route path="recorrencias" element={<Recurrences />} />
           <Route path="perfil" element={<Profile />} />
         </Route>
       </Routes>

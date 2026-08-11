@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Receipt, Tags, User } from "lucide-react";
+import { LayoutDashboard, Receipt, Tags, User, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Layout() {
@@ -9,6 +9,7 @@ export function Layout() {
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Transações", href: "/transacoes", icon: Receipt },
     { name: "Cadastros", href: "/cadastros", icon: Tags },
+    { name: "Recorrências", href: "/recorrencias", icon: Repeat },
     { name: "Perfil", href: "/perfil", icon: User },
   ];
 
