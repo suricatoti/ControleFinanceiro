@@ -91,12 +91,39 @@ export default function Transactions() {
       const currentDate = d.toISOString().split("T")[0];
       
       if (isTransfer) {
-        if (editingTransactionId) return; // Edição de transferência não permitida
-        
-        const id1 = crypto.randomUUID();
-        const id2 = crypto.randomUUID();
-        
-        // Saída (Origem)
+        if (editingTransactionId) {
+          const oldTx = await db.transactions.get(editingTransactionId);
+          if (oldTx && oldTx.linkedTransactionId) {
+            const pair = await db.transactions.where('id').anyOf([oldTx.id, oldTx.linkedTransactionId]).toArray();
+            const originTx = pair.find(p => p.amount < 0);
+            const destTx = pair.find(p => p.amount > 0);
+            
+            if (originTx && destTx) {
+              await db.transactions.update(originTx.id, {
+                date: currentDate,
+                accountId: accountId,
+                categoryId,
+                subcategoryId,
+                description: currentDesc,
+                amount: -Math.abs(currentAmount)
+              });
+              
+              await db.transactions.update(destTx.id, {
+                date: currentDate,
+                accountId: destinationAccountId,
+                categoryId,
+                subcategoryId,
+                description: currentDesc,
+                amount: Math.abs(currentAmount)
+              });
+            }
+          }
+          if (i === parsedInstallments) setEditingTransactionId(null);
+        } else {
+          const id1 = crypto.randomUUID();
+          const id2 = crypto.randomUUID();
+          
+          // Saída (Origem)
         await db.transactions.add({
           id: id1,
           date: currentDate,
@@ -119,6 +146,7 @@ export default function Transactions() {
           amount: Math.abs(currentAmount),
           linkedTransactionId: id1,
         });
+        }
       } else {
         let finalAmount = currentAmount;
         if (subcat.type === 'Despesa') {
@@ -161,14 +189,30 @@ export default function Transactions() {
     setInstallments(1);
   };
 
-  const handleEdit = (t: any) => {
+  const handleEdit = async (t: any) => {
     setEditingTransactionId(t.id);
     setDate(t.date);
-    setAccountId(t.accountId);
     setSubcategoryId(t.subcategoryId);
     setDescription(t.description);
     setAmount(Math.abs(t.amount).toString());
     setInstallments(1);
+    
+    if (t.linkedTransactionId) {
+      const linkedT = await db.transactions.get(t.linkedTransactionId);
+      if (linkedT) {
+        if (t.amount < 0) {
+          setAccountId(t.accountId);
+          setDestinationAccountId(linkedT.accountId);
+        } else {
+          setAccountId(linkedT.accountId);
+          setDestinationAccountId(t.accountId);
+        }
+      }
+    } else {
+      setAccountId(t.accountId);
+      setDestinationAccountId("");
+    }
+    
     setIsOpen(true);
   };
 
@@ -471,9 +515,7 @@ export default function Transactions() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {!t.linkedTransactionId && (
-                            <Button variant="outline" size="sm" onClick={() => handleEdit(t)}>Editar</Button>
-                          )}
+                          <Button variant="outline" size="sm" onClick={() => handleEdit(t)}>Editar</Button>
                           <Button variant="destructive" size="sm" onClick={() => handleDelete(t)}>Excluir</Button>
                         </div>
                       </TableCell>
