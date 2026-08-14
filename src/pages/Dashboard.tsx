@@ -45,6 +45,7 @@ export default function Dashboard() {
   });
   
   const [showSubcategoriesExpense, setShowSubcategoriesExpense] = useState(false);
+  const [includeCreditCards, setIncludeCreditCards] = useState(false);
 
   const { filteredTransactions, startTimestamp, endTimestamp } = useMemo(() => {
     if (!transactions) return { filteredTransactions: [], startTimestamp: 0, endTimestamp: 0 };
@@ -141,7 +142,7 @@ export default function Dashboard() {
 
   // 2. Prepara dados dos Gráficos de Rosca (Receitas e Despesas por Categoria/Subcategoria)
   const { pieIncome, pieExpense } = useMemo(() => {
-    if (!categories || !subcategories) return { pieIncome: [], pieExpense: [] };
+    if (!categories || !subcategories || !accounts) return { pieIncome: [], pieExpense: [] };
 
     const incomeMap: Record<string, number> = {};
     const expenseMap: Record<string, number> = {};
@@ -159,6 +160,8 @@ export default function Dashboard() {
       if (t.amount > 0) {
         incomeMap[incomeLabel] = (incomeMap[incomeLabel] || 0) + t.amount;
       } else {
+        const acc = accounts.find(a => a.id === t.accountId);
+        if (acc?.isCreditCard && !includeCreditCards) return;
         expenseMap[expenseLabel] = (expenseMap[expenseLabel] || 0) + Math.abs(t.amount);
       }
     });
@@ -178,7 +181,7 @@ export default function Dashboard() {
         percentage: ((expenseMap[name] / totalExpense) * 100).toFixed(1) + '%'
       }))
     };
-  }, [filteredTransactions, categories, subcategories, showSubcategoriesExpense]);
+  }, [filteredTransactions, categories, subcategories, showSubcategoriesExpense, accounts, includeCreditCards]);
 
   // 3. Prepara os saldos atuais das contas (soma de todas as transações até hoje)
   const accountBalances = useMemo(() => {
@@ -380,9 +383,15 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle>Saídas por Categoria</CardTitle>
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="subcat-expense" checked={showSubcategoriesExpense} onChange={(e) => setShowSubcategoriesExpense(e.target.checked)} className="h-4 w-4 cursor-pointer" />
-              <label htmlFor="subcat-expense" className="text-sm font-medium leading-none cursor-pointer select-none">Ver Subcategorias</label>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="include-credit-card" checked={includeCreditCards} onChange={(e) => setIncludeCreditCards(e.target.checked)} className="h-4 w-4 cursor-pointer" />
+                <label htmlFor="include-credit-card" className="text-sm font-medium leading-none cursor-pointer select-none">Cartão</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="subcat-expense" checked={showSubcategoriesExpense} onChange={(e) => setShowSubcategoriesExpense(e.target.checked)} className="h-4 w-4 cursor-pointer" />
+                <label htmlFor="subcat-expense" className="text-sm font-medium leading-none cursor-pointer select-none">Ver Subcategorias</label>
+              </div>
             </div>
           </CardHeader>
           <CardContent>

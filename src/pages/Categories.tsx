@@ -48,6 +48,7 @@ export default function Categories() {
   // Account Form State
   const [accName, setAccName] = useState("");
   const [accBalance, setAccBalance] = useState("");
+  const [accIsCreditCard, setAccIsCreditCard] = useState(false);
 
   // Category Form State
   const [catName, setCatName] = useState("");
@@ -67,6 +68,7 @@ export default function Categories() {
       await db.accounts.update(editingAccountId, {
         name: accName,
         initialBalance: parseFloat(String(accBalance).replace(",", ".")) || 0,
+        isCreditCard: accIsCreditCard,
       });
       setEditingAccountId(null);
     } else {
@@ -74,11 +76,13 @@ export default function Categories() {
         id: crypto.randomUUID(),
         name: accName,
         initialBalance: parseFloat(String(accBalance).replace(",", ".")) || 0,
+        isCreditCard: accIsCreditCard,
       });
     }
     
     setAccName("");
     setAccBalance("");
+    setAccIsCreditCard(false);
   };
 
   const handleAddCategory = async (e: React.FormEvent) => {
@@ -155,6 +159,7 @@ export default function Categories() {
     setEditingAccountId(acc.id);
     setAccName(acc.name);
     setAccBalance(acc.initialBalance.toString());
+    setAccIsCreditCard(acc.isCreditCard || false);
   };
 
   const handleEditCategory = (cat: any) => {
@@ -166,6 +171,7 @@ export default function Categories() {
     setEditingAccountId(null);
     setAccName("");
     setAccBalance("");
+    setAccIsCreditCard(false);
   };
 
   const handleEditSubcategory = (subcat: any) => {
@@ -233,6 +239,16 @@ export default function Categories() {
                     fixedDecimalScale
                     required
                   />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="accIsCreditCard" 
+                    checked={accIsCreditCard} 
+                    onChange={(e) => setAccIsCreditCard(e.target.checked)} 
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" 
+                  />
+                  <Label htmlFor="accIsCreditCard" className="cursor-pointer">Cartão de crédito?</Label>
                 </div>
                 <div className="flex gap-2">
                   <Button type="submit" className="w-full">

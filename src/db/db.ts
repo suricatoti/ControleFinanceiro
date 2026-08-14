@@ -5,6 +5,7 @@ export interface Account {
   id: string;
   name: string;
   initialBalance: number;
+  isCreditCard?: boolean;
 }
 
 export interface Category {
