@@ -72,7 +72,7 @@ export default function Recurrences() {
         .equals(editingId)
         .toArray();
         
-      const now = new Date().getTime();
+
       for (const tx of pendingTxs) {
         if (tx.status === 'Pendente') { // Could also check date >= now
           await db.transactions.update(tx.id, {
@@ -186,7 +186,7 @@ export default function Recurrences() {
                   <TableCell className="font-medium">{r.description}</TableCell>
                   <TableCell>{cat?.name} {sub ? `> ${sub.name}` : ''}</TableCell>
                   <TableCell>{new Date(r.startDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</TableCell>
-                  <TableCell className="text-right font-bold text-red-500">
+                  <TableCell className={`text-right font-bold ${r.amount > 0 ? 'text-blue-500' : 'text-red-500'}`}>
                     {formatCurrency(Math.abs(r.amount))}
                   </TableCell>
                   <TableCell className="text-right">

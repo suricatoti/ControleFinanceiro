@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/db";
+import { getNaturalBillMonth } from "@/lib/creditCardUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -46,6 +47,8 @@ export default function Dashboard() {
   
   const [showSubcategoriesExpense, setShowSubcategoriesExpense] = useState(false);
   const [includeCreditCards, setIncludeCreditCards] = useState(false);
+  const [showIncomeValues, setShowIncomeValues] = useState(false);
+  const [showExpenseValues, setShowExpenseValues] = useState(false);
 
   const { filteredTransactions, startTimestamp, endTimestamp } = useMemo(() => {
     if (!transactions) return { filteredTransactions: [], startTimestamp: 0, endTimestamp: 0 };
@@ -76,13 +79,35 @@ export default function Dashboard() {
     const st = startD.getTime();
     const et = endD.getTime();
 
-    const filtered = transactions?.filter(t => {
-      const tTime = new Date(t.date).getTime();
-      return tTime >= st && tTime <= et && t.status !== 'Pendente';
-    }) || [];
+    const filtered = transactions?.reduce((accList, t) => {
+      if (t.status === 'Pendente') return accList;
+      
+      const acc = accounts?.find(a => a.id === t.accountId);
+      let effectiveTime = new Date(t.date + "T12:00:00").getTime();
+      let effectiveDateStr = t.date;
+      
+      if (acc?.isCreditCard && acc.closingDay && acc.dueDay) {
+          const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay);
+          const [y, m] = billMonth.split('-').map(Number);
+          
+          // O mês efetivo da despesa será o mês da fatura (mês de fechamento).
+          // Usamos o dia 1 para garantir que caia no mês/ano correto no filtro global.
+          effectiveTime = new Date(y, m - 1, 1, 12, 0, 0).getTime();
+          effectiveDateStr = new Date(effectiveTime).toISOString().split('T')[0];
+      }
+      
+      if (effectiveTime >= st && effectiveTime <= et) {
+         if (acc?.isCreditCard && !includeCreditCards) {
+            // Se for cartão e o filtro de incluir cartões estiver desligado, ignora.
+         } else {
+            accList.push({ ...t, effectiveDate: effectiveDateStr });
+         }
+      }
+      return accList;
+    }, [] as any[]) || [];
 
     return { filteredTransactions: filtered, startTimestamp: st, endTimestamp: et };
-  }, [transactions, periodFilter, customStartDate, customEndDate]);
+  }, [transactions, periodFilter, customStartDate, customEndDate, accounts, includeCreditCards]);
 
   // 1. Prepara dados do Gráfico de Barras (Receitas vs Despesas por mês)
   const barChartData = useMemo(() => {
@@ -123,7 +148,7 @@ export default function Dashboard() {
       const subcat = t.subcategoryId ? subcategories?.find(s => s.id === t.subcategoryId) : null;
       if (subcat?.type === 'Transferência') return;
 
-      const d = new Date(t.date);
+      const d = new Date(t.effectiveDate + "T12:00:00");
       const key = isYearly ? d.getFullYear().toString() : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       
       if (!dataObj[key]) {
@@ -160,8 +185,6 @@ export default function Dashboard() {
       if (t.amount > 0) {
         incomeMap[incomeLabel] = (incomeMap[incomeLabel] || 0) + t.amount;
       } else {
-        const acc = accounts.find(a => a.id === t.accountId);
-        if (acc?.isCreditCard && !includeCreditCards) return;
         expenseMap[expenseLabel] = (expenseMap[expenseLabel] || 0) + Math.abs(t.amount);
       }
     });
@@ -181,7 +204,7 @@ export default function Dashboard() {
         percentage: ((expenseMap[name] / totalExpense) * 100).toFixed(1) + '%'
       }))
     };
-  }, [filteredTransactions, categories, subcategories, showSubcategoriesExpense, accounts, includeCreditCards]);
+  }, [filteredTransactions, categories, subcategories, showSubcategoriesExpense]);
 
   // 3. Prepara os saldos atuais das contas (soma de todas as transações até hoje)
   const accountBalances = useMemo(() => {
@@ -196,7 +219,7 @@ export default function Dashboard() {
       
       transactions.forEach(t => {
         if (t.accountId === acc.id) {
-          const tTime = new Date(t.date).getTime();
+          const tTime = new Date(t.date + "T12:00:00").getTime();
           // Soma apenas transações passadas e de hoje, e que não estejam pendentes
           if (tTime <= todayTimestamp && t.status !== 'Pendente') {
             balance += t.amount;
@@ -212,7 +235,7 @@ export default function Dashboard() {
     if (!transactions) return [];
     
     return transactions.filter(t => {
-      const tTime = new Date(t.date).getTime();
+      const tTime = new Date(t.date + "T12:00:00").getTime();
       return tTime >= startTimestamp && tTime <= endTimestamp && t.status === 'Pendente';
     }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .map(t => {
@@ -236,6 +259,11 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold tracking-tight">Visão Geral</h1>
         
         <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex items-center gap-2 bg-muted/30 px-3 py-2 rounded-md border">
+            <input type="checkbox" id="global-include-credit-card" checked={includeCreditCards} onChange={(e) => setIncludeCreditCards(e.target.checked)} className="h-4 w-4 cursor-pointer" />
+            <label htmlFor="global-include-credit-card" className="text-sm font-medium leading-none cursor-pointer select-none">Incluir Cartões</label>
+          </div>
+
           {periodFilter === "Personalizado" && (
             <div className="flex items-center gap-2">
               <Input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="w-[140px]" />
@@ -349,8 +377,14 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle>Entradas por Categoria</CardTitle>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="val-income" checked={showIncomeValues} onChange={(e) => setShowIncomeValues(e.target.checked)} className="h-4 w-4 cursor-pointer" />
+                <label htmlFor="val-income" className="text-sm font-medium leading-none cursor-pointer select-none">Valor R$</label>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -368,7 +402,7 @@ export default function Dashboard() {
                         name
                       ]} 
                     />
-                    <Legend />
+                    <Legend formatter={(value, entry: any) => showIncomeValues ? `${value}: ${formatCurrency(entry.payload.value)}` : value} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -385,8 +419,8 @@ export default function Dashboard() {
             <CardTitle>Saídas por Categoria</CardTitle>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <input type="checkbox" id="include-credit-card" checked={includeCreditCards} onChange={(e) => setIncludeCreditCards(e.target.checked)} className="h-4 w-4 cursor-pointer" />
-                <label htmlFor="include-credit-card" className="text-sm font-medium leading-none cursor-pointer select-none">Cartão</label>
+                <input type="checkbox" id="val-expense" checked={showExpenseValues} onChange={(e) => setShowExpenseValues(e.target.checked)} className="h-4 w-4 cursor-pointer" />
+                <label htmlFor="val-expense" className="text-sm font-medium leading-none cursor-pointer select-none">Valor R$</label>
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="subcat-expense" checked={showSubcategoriesExpense} onChange={(e) => setShowSubcategoriesExpense(e.target.checked)} className="h-4 w-4 cursor-pointer" />
@@ -410,7 +444,7 @@ export default function Dashboard() {
                         name
                       ]} 
                     />
-                    <Legend />
+                    <Legend formatter={(value, entry: any) => showExpenseValues ? `${value}: ${formatCurrency(entry.payload.value)}` : value} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (

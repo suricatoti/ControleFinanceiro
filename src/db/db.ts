@@ -6,6 +6,8 @@ export interface Account {
   name: string;
   initialBalance: number;
   isCreditCard?: boolean;
+  closingDay?: number;
+  dueDay?: number;
 }
 
 export interface Category {
@@ -43,6 +45,7 @@ export interface Transaction {
   linkedTransactionId?: string;
   recurringGroupId?: string;
   status?: 'Pendente' | 'Paga';
+  creditCardBillDate?: string;
 }
 
 const db = new Dexie('FinanceDB') as Dexie & {
@@ -64,7 +67,7 @@ db.version(1).stores({
 db.on('populate', async () => {
   await db.accounts.bulkAdd(initialAccounts);
   await db.categories.bulkAdd(initialCategories);
-  await db.subcategories.bulkAdd(initialSubcategories);
+  await db.subcategories.bulkAdd(initialSubcategories as any);
 });
 
 db.version(2).stores({
@@ -87,6 +90,10 @@ db.version(5).stores({
   return tx.table('transactions').toCollection().modify(transaction => {
     transaction.status = 'Paga';
   });
+});
+
+db.version(6).stores({
+  transactions: 'id, date, accountId, categoryId, subcategoryId, recurringGroupId, status, creditCardBillDate'
 });
 
 export { db };

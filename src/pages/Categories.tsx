@@ -49,6 +49,8 @@ export default function Categories() {
   const [accName, setAccName] = useState("");
   const [accBalance, setAccBalance] = useState("");
   const [accIsCreditCard, setAccIsCreditCard] = useState(false);
+  const [accClosingDay, setAccClosingDay] = useState("");
+  const [accDueDay, setAccDueDay] = useState("");
 
   // Category Form State
   const [catName, setCatName] = useState("");
@@ -69,6 +71,8 @@ export default function Categories() {
         name: accName,
         initialBalance: parseFloat(String(accBalance).replace(",", ".")) || 0,
         isCreditCard: accIsCreditCard,
+        closingDay: accIsCreditCard && accClosingDay ? parseInt(accClosingDay, 10) : undefined,
+        dueDay: accIsCreditCard && accDueDay ? parseInt(accDueDay, 10) : undefined,
       });
       setEditingAccountId(null);
     } else {
@@ -77,12 +81,16 @@ export default function Categories() {
         name: accName,
         initialBalance: parseFloat(String(accBalance).replace(",", ".")) || 0,
         isCreditCard: accIsCreditCard,
+        closingDay: accIsCreditCard && accClosingDay ? parseInt(accClosingDay, 10) : undefined,
+        dueDay: accIsCreditCard && accDueDay ? parseInt(accDueDay, 10) : undefined,
       });
     }
     
     setAccName("");
     setAccBalance("");
     setAccIsCreditCard(false);
+    setAccClosingDay("");
+    setAccDueDay("");
   };
 
   const handleAddCategory = async (e: React.FormEvent) => {
@@ -160,6 +168,8 @@ export default function Categories() {
     setAccName(acc.name);
     setAccBalance(acc.initialBalance.toString());
     setAccIsCreditCard(acc.isCreditCard || false);
+    setAccClosingDay(acc.closingDay ? acc.closingDay.toString() : "");
+    setAccDueDay(acc.dueDay ? acc.dueDay.toString() : "");
   };
 
   const handleEditCategory = (cat: any) => {
@@ -172,6 +182,8 @@ export default function Categories() {
     setAccName("");
     setAccBalance("");
     setAccIsCreditCard(false);
+    setAccClosingDay("");
+    setAccDueDay("");
   };
 
   const handleEditSubcategory = (subcat: any) => {
@@ -250,6 +262,34 @@ export default function Categories() {
                   />
                   <Label htmlFor="accIsCreditCard" className="cursor-pointer">Cartão de crédito?</Label>
                 </div>
+                {accIsCreditCard && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="accClosingDay">Dia de Fechamento</Label>
+                      <Input 
+                        id="accClosingDay" 
+                        type="number" 
+                        min="1" max="31"
+                        value={accClosingDay} 
+                        onChange={(e) => setAccClosingDay(e.target.value)} 
+                        placeholder="Ex: 15" 
+                        required={accIsCreditCard} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="accDueDay">Dia de Vencimento</Label>
+                      <Input 
+                        id="accDueDay" 
+                        type="number" 
+                        min="1" max="31"
+                        value={accDueDay} 
+                        onChange={(e) => setAccDueDay(e.target.value)} 
+                        placeholder="Ex: 25" 
+                        required={accIsCreditCard} 
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Button type="submit" className="w-full">
                     {editingAccountId ? "Atualizar Conta" : "Salvar Conta"}

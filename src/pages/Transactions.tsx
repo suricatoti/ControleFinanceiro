@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { NumericFormat } from "react-number-format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/db";
+import { getCreditCardBillPeriod, getNaturalBillMonth } from "@/lib/creditCardUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +28,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 
@@ -53,6 +54,10 @@ export default function Transactions() {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [installments, setInstallments] = useState(1);
+
+  const [isMoverOpen, setIsMoverOpen] = useState(false);
+  const [moverTransaction, setMoverTransaction] = useState<any | null>(null);
+  const [moverMonthStr, setMoverMonthStr] = useState("");
 
   const [periodFilter, setPeriodFilter] = useState("Mês Atual");
   const [customStartDate, setCustomStartDate] = useState(() => {
@@ -104,7 +109,7 @@ export default function Transactions() {
       d.setUTCMonth(d.getUTCMonth() + (i - 1));
       const currentDate = d.toISOString().split("T")[0];
       
-      let txStatus = isPending ? 'Pendente' : 'Paga';
+      let txStatus: 'Pendente' | 'Paga' = isPending ? 'Pendente' : 'Paga';
       if (i > 1 && !isPending) {
          const todayString = new Date().toISOString().split("T")[0];
          const isFuture = new Date(currentDate).getTime() > new Date(todayString).getTime();
@@ -274,6 +279,51 @@ export default function Transactions() {
     await db.transactions.delete(t.id);
   };
 
+  const openMover = (t: any) => {
+     setMoverTransaction(t);
+     const acc = accounts?.find(a => a.id === t.accountId);
+     if (acc && acc.isCreditCard && acc.closingDay && acc.dueDay) {
+        setMoverMonthStr(t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay));
+     } else {
+        setMoverMonthStr(t.creditCardBillDate || t.date.substring(0, 7));
+     }
+     setIsMoverOpen(true);
+  };
+
+  const handleConfirmMover = async (e: React.FormEvent) => {
+     e.preventDefault();
+     if (!moverTransaction || !moverMonthStr) return;
+     
+     // Atualiza a transação com a data da fatura forçada
+     await db.transactions.update(moverTransaction.id, {
+         creditCardBillDate: moverMonthStr
+     });
+     
+     // Se houver transação vinculada (transferência), também precisamos atualizar
+     if (moverTransaction.linkedTransactionId) {
+       await db.transactions.update(moverTransaction.linkedTransactionId, {
+         creditCardBillDate: moverMonthStr
+       });
+     }
+     
+     setIsMoverOpen(false);
+     setMoverTransaction(null);
+  };
+
+  // Define o targetMonthStr no escopo do componente para o banner
+  const isMonthFilter = periodFilter === 'Mês Atual' || periodFilter === 'Próximo mês';
+  const targetMonthStr = useMemo(() => {
+    if (periodFilter === 'Mês Atual') {
+      const d = new Date();
+      return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+    } else if (periodFilter === 'Próximo mês') {
+      const d = new Date();
+      d.setMonth(d.getMonth() + 1);
+      return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+    }
+    return "";
+  }, [periodFilter]);
+
   // Calcula o running balance e aplica filtro de período
   const { filteredTransactions, openingBalances } = useMemo(() => {
     if (!transactions || !accounts || !categories || !subcategories) {
@@ -309,7 +359,7 @@ export default function Transactions() {
     const startTimestamp = startD.getTime();
     const endTimestamp = endD.getTime();
 
-    // Ordena as transações cronologicamente (da mais antiga pra mais nova)
+    // Ordena as transações cronologicamente
     const sorted = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     // 1. Calcula o saldo ANTERIOR (acumulando apenas as transações antes da data de início)
@@ -319,8 +369,26 @@ export default function Transactions() {
     });
 
     for (const t of sorted) {
-      const tTime = new Date(t.date).getTime();
-      if (tTime < startTimestamp) {
+      const acc = accounts.find(a => a.id === t.accountId);
+      if (!acc) continue;
+      
+      const tTime = new Date(t.date + "T12:00:00").getTime();
+      let isBeforeTarget = false;
+
+      if (acc.isCreditCard && acc.closingDay && acc.dueDay) {
+         if (isMonthFilter) {
+            const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay);
+            if (billMonth < targetMonthStr) {
+               isBeforeTarget = true;
+            }
+         } else {
+            if (tTime < startTimestamp) isBeforeTarget = true;
+         }
+      } else {
+         if (tTime < startTimestamp) isBeforeTarget = true;
+      }
+
+      if (isBeforeTarget) {
          openingBalances[t.accountId] += t.amount;
       }
     }
@@ -330,8 +398,30 @@ export default function Transactions() {
     const periodTxs = [];
 
     for (const t of sorted) {
-      const tTime = new Date(t.date).getTime();
-      if (tTime >= startTimestamp && tTime <= endTimestamp) {
+      const acc = accounts.find(a => a.id === t.accountId);
+      if (!acc) continue;
+      
+      let include = false;
+      const tTime = new Date(t.date + "T12:00:00").getTime();
+
+      if (acc.isCreditCard && acc.closingDay && acc.dueDay) {
+         if (isMonthFilter) {
+            const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay);
+            if (billMonth === targetMonthStr) {
+               include = true;
+            }
+         } else {
+            if (tTime >= startTimestamp && tTime <= endTimestamp) {
+               include = true;
+            }
+         }
+      } else {
+         if (tTime >= startTimestamp && tTime <= endTimestamp) {
+            include = true;
+         }
+      }
+
+      if (include) {
         runningBalances[t.accountId] += t.amount;
         
         const cat = categories.find(c => c.id === t.categoryId);
@@ -344,7 +434,7 @@ export default function Transactions() {
 
         periodTxs.push({
           ...t,
-          accountName: accounts.find(a => a.id === t.accountId)?.name || 'Desconhecida',
+          accountName: acc.name,
           categoryName: fullCategoryName,
           currentBalance: runningBalances[t.accountId],
         });
@@ -551,6 +641,27 @@ export default function Transactions() {
         </Dialog>
       </div>
 
+      <Dialog open={isMoverOpen} onOpenChange={setIsMoverOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mover Fatura</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleConfirmMover} className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Mês da Fatura (YYYY-MM)</Label>
+              <Input 
+                type="month"
+                value={moverMonthStr}
+                onChange={(e) => setMoverMonthStr(e.target.value)}
+                required
+              />
+              <p className="text-xs text-muted-foreground">Para qual fatura (mês/ano) você deseja mover esta transação?</p>
+            </div>
+            <Button type="submit" className="w-full">Confirmar</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {accounts?.map(acc => {
         const accTransactions = filteredTransactions.filter(t => t.accountId === acc.id);
         const periodOpeningBalance = openingBalances[acc.id] || 0;
@@ -575,6 +686,20 @@ export default function Transactions() {
                 <Plus size={16} /> Nova Transação
               </Button>
             </div>
+            
+            {acc.isCreditCard && acc.closingDay && acc.dueDay && isMonthFilter && (
+              <div className="bg-blue-50/50 text-blue-800 p-3 rounded-md text-sm border border-blue-200 shadow-sm flex items-center">
+                <span className="text-xl mr-3">💳</span>
+                <div>
+                  <strong className="block mb-1 text-base">Fatura de {targetMonthStr.split('-').reverse().join('/')}</strong>
+                  <span className="opacity-90">
+                    Período de compras: {getCreditCardBillPeriod(targetMonthStr, acc.closingDay, acc.dueDay).startDate.toLocaleDateString('pt-BR')} a {getCreditCardBillPeriod(targetMonthStr, acc.closingDay, acc.dueDay).endDate.toLocaleDateString('pt-BR')} <br/>
+                    Vencimento: {getCreditCardBillPeriod(targetMonthStr, acc.closingDay, acc.dueDay).dueDate.toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+              </div>
+            )}
+            
             <div className="border rounded-md bg-card">
               <Table>
                 <TableHeader>
@@ -621,6 +746,9 @@ export default function Transactions() {
                             <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => openBaixa(t)}>Baixa</Button>
                           ) : (
                             <Button variant="outline" size="sm" onClick={() => handleEdit(t)}>Editar</Button>
+                          )}
+                          {acc.isCreditCard && (
+                            <Button variant="secondary" size="sm" onClick={() => openMover(t)}>Mover</Button>
                           )}
                           <Button variant="destructive" size="sm" onClick={() => handleDelete(t)}>Excluir</Button>
                         </div>
