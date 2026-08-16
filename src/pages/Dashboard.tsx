@@ -7,14 +7,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell 
 } from "recharts";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -32,18 +26,16 @@ export default function Dashboard() {
   const subcategories = useLiveQuery(() => db.subcategories.toArray());
   const accounts = useLiveQuery(() => db.accounts.toArray());
 
-  const [periodFilter, setPeriodFilter] = useState("Mês Atual");
-  const [customStartDate, setCustomStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(1);
-    return d.toISOString().split("T")[0];
-  });
-  const [customEndDate, setCustomEndDate] = useState(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + 1);
-    d.setDate(0);
-    return d.toISOString().split("T")[0];
-  });
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
+  
+  const navigateMonth = (direction: number) => {
+    setCurrentMonth(prev => {
+      const d = new Date(prev);
+      d.setMonth(d.getMonth() + direction);
+      return d;
+    });
+  };
   
   const [showSubcategoriesExpense, setShowSubcategoriesExpense] = useState(false);
   const [includeCreditCards, setIncludeCreditCards] = useState(false);
@@ -53,28 +45,8 @@ export default function Dashboard() {
   const { filteredTransactions, startTimestamp, endTimestamp } = useMemo(() => {
     if (!transactions) return { filteredTransactions: [], startTimestamp: 0, endTimestamp: 0 };
 
-    let startD = new Date();
-    let endD = new Date();
-    startD.setHours(0,0,0,0);
-    endD.setHours(23,59,59,999);
-
-    if (periodFilter === 'Mês Atual') {
-      startD.setDate(1);
-      endD.setMonth(endD.getMonth() + 1);
-      endD.setDate(0);
-    } else if (periodFilter === 'Ano atual') {
-      startD = new Date(startD.getFullYear(), 0, 1);
-      endD = new Date(startD.getFullYear(), 11, 31, 23, 59, 59, 999);
-    } else if (periodFilter === 'Últimos 5 anos') {
-      startD.setFullYear(startD.getFullYear() - 5);
-    } else if (periodFilter === 'Últimos 10 anos') {
-      startD.setFullYear(startD.getFullYear() - 10);
-    } else if (periodFilter === 'Todo Período') {
-      startD = new Date(0);
-    } else if (periodFilter === 'Personalizado') {
-      startD = new Date(customStartDate + "T00:00:00");
-      endD = new Date(customEndDate + "T23:59:59");
-    }
+    let startD = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1, 0, 0, 0, 0);
+    let endD = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0, 23, 59, 59, 999);
 
     const st = startD.getTime();
     const et = endD.getTime();
@@ -107,53 +79,39 @@ export default function Dashboard() {
     }, [] as any[]) || [];
 
     return { filteredTransactions: filtered, startTimestamp: st, endTimestamp: et };
-  }, [transactions, periodFilter, customStartDate, customEndDate, accounts, includeCreditCards]);
+  }, [transactions, currentMonth, accounts, includeCreditCards]);
 
   // 1. Prepara dados do Gráfico de Barras (Receitas vs Despesas por mês)
   const barChartData = useMemo(() => {
-    const dataObj: Record<string, { label: string, Receitas: number, Despesas: number }> = {};
-    const isYearly = periodFilter === 'Últimos 5 anos' || periodFilter === 'Últimos 10 anos' || periodFilter === 'Todo Período';
-    const currentYear = new Date().getFullYear();
+    if (!transactions) return [];
 
-    if (periodFilter === 'Mês Atual') {
-      const key = `${currentYear}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const dataObj: Record<string, { label: string, Receitas: number, Despesas: number }> = {};
+    for (let i = 0; i < 12; i++) {
+      const key = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
       dataObj[key] = { label: key, Receitas: 0, Despesas: 0 };
-    } else if (periodFilter === 'Ano atual') {
-      for (let i = 0; i < 12; i++) {
-        const key = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
-        dataObj[key] = { label: key, Receitas: 0, Despesas: 0 };
-      }
-    } else if (periodFilter === 'Últimos 5 anos') {
-      for (let i = 4; i >= 0; i--) {
-        const y = (currentYear - i).toString();
-        dataObj[y] = { label: y, Receitas: 0, Despesas: 0 };
-      }
-    } else if (periodFilter === 'Últimos 10 anos') {
-      for (let i = 9; i >= 0; i--) {
-        const y = (currentYear - i).toString();
-        dataObj[y] = { label: y, Receitas: 0, Despesas: 0 };
-      }
-    } else if (periodFilter === 'Personalizado') {
-      const startD = new Date(startTimestamp);
-      const endD = new Date(endTimestamp);
-      let currentD = new Date(startD.getFullYear(), startD.getMonth(), 1);
-      while (currentD <= endD) {
-        const key = `${currentD.getFullYear()}-${String(currentD.getMonth() + 1).padStart(2, '0')}`;
-        dataObj[key] = { label: key, Receitas: 0, Despesas: 0 };
-        currentD.setMonth(currentD.getMonth() + 1);
-      }
     }
 
-    filteredTransactions.forEach(t => {
+    transactions.forEach(t => {
+      if (t.status === 'Pendente') return;
+      
+      const acc = accounts?.find(a => a.id === t.accountId);
+      let effectiveTime = new Date(t.date + "T12:00:00").getTime();
+      
+      if (acc?.isCreditCard && acc.closingDay && acc.dueDay) {
+          const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay);
+          const [y, m] = billMonth.split('-').map(Number);
+          effectiveTime = new Date(y, m - 1, 1, 12, 0, 0).getTime();
+      }
+      
+      if (acc?.isCreditCard && !includeCreditCards) return;
+
+      const d = new Date(effectiveTime);
+      if (d.getFullYear() !== currentYear) return;
+
       const subcat = t.subcategoryId ? subcategories?.find(s => s.id === t.subcategoryId) : null;
       if (subcat?.type === 'Transferência') return;
 
-      const d = new Date(t.effectiveDate + "T12:00:00");
-      const key = isYearly ? d.getFullYear().toString() : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      
-      if (!dataObj[key]) {
-        dataObj[key] = { label: key, Receitas: 0, Despesas: 0 };
-      }
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       
       if (t.amount > 0) {
         dataObj[key].Receitas += t.amount;
@@ -163,7 +121,7 @@ export default function Dashboard() {
     });
 
     return Object.values(dataObj).sort((a, b) => a.label.localeCompare(b.label));
-  }, [filteredTransactions, periodFilter, subcategories]);
+  }, [transactions, currentYear, subcategories, accounts, includeCreditCards]);
 
   // 2. Prepara dados dos Gráficos de Rosca (Receitas e Despesas por Categoria/Subcategoria)
   const { pieIncome, pieExpense } = useMemo(() => {
@@ -206,30 +164,36 @@ export default function Dashboard() {
     };
   }, [filteredTransactions, categories, subcategories, showSubcategoriesExpense]);
 
-  // 3. Prepara os saldos atuais das contas (soma de todas as transações até hoje)
+  // 3. Prepara os saldos das contas (soma de todas as transações até o mês selecionado)
   const accountBalances = useMemo(() => {
     if (!accounts || !transactions) return [];
 
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    const todayTimestamp = today.getTime();
+    const targetMonthStr = `${currentMonth.getFullYear()}-${(currentMonth.getMonth() + 1).toString().padStart(2, '0')}`;
 
     return accounts.map(acc => {
-      let balance = acc.initialBalance || 0;
+      let balance = acc.isCreditCard ? 0 : (acc.initialBalance || 0);
       
       transactions.forEach(t => {
-        if (t.accountId === acc.id) {
-          const tTime = new Date(t.date + "T12:00:00").getTime();
-          // Soma apenas transações passadas e de hoje, e que não estejam pendentes
-          if (tTime <= todayTimestamp && t.status !== 'Pendente') {
-            balance += t.amount;
+        if (t.accountId === acc.id && t.status !== 'Pendente') {
+          if (acc.isCreditCard && acc.closingDay && acc.dueDay) {
+            // Cartão de crédito: saldo é apenas a soma da fatura atual (assumindo que anteriores foram pagas)
+            const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay);
+            if (billMonth === targetMonthStr) {
+              balance += t.amount;
+            }
+          } else {
+            // Conta normal: soma cumulativa até o fim do mês selecionado
+            const tTime = new Date(t.date + "T12:00:00").getTime();
+            if (tTime <= endTimestamp) {
+              balance += t.amount;
+            }
           }
         }
       });
 
       return { ...acc, currentBalance: balance };
     });
-  }, [accounts, transactions]);
+  }, [accounts, transactions, endTimestamp, currentMonth]);
 
   const pendingTransactions = useMemo(() => {
     if (!transactions) return [];
@@ -264,40 +228,32 @@ export default function Dashboard() {
             <label htmlFor="global-include-credit-card" className="text-sm font-medium leading-none cursor-pointer select-none">Incluir Cartões</label>
           </div>
 
-          {periodFilter === "Personalizado" && (
-            <div className="flex items-center gap-2">
-              <Input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="w-[140px]" />
-              <span className="text-sm text-muted-foreground">até</span>
-              <Input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="w-[140px]" />
-            </div>
-          )}
-          
-          <Select value={periodFilter} onValueChange={setPeriodFilter}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Mês Atual">Mês Atual</SelectItem>
-              <SelectItem value="Ano atual">Ano atual</SelectItem>
-              <SelectItem value="Últimos 5 anos">Últimos 5 anos</SelectItem>
-              <SelectItem value="Últimos 10 anos">Últimos 10 anos</SelectItem>
-              <SelectItem value="Todo Período">Todo Período</SelectItem>
-              <SelectItem value="Personalizado">Personalizado</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigateMonth(-1)}>
+              <ChevronLeft size={16} />
+            </Button>
+            <span className="font-bold min-w-[150px] text-center text-sm capitalize">
+              {currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            </span>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigateMonth(1)}>
+              <ChevronRight size={16} />
+            </Button>
+          </div>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Saldos Atuais</CardTitle>
+          <CardTitle className="capitalize">
+            Saldo em {currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Conta</TableHead>
-                <TableHead className="text-right">Saldo Atual</TableHead>
+                <TableHead className="text-right">Saldo</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -355,8 +311,19 @@ export default function Dashboard() {
       )}
 
       <Card>
-        <CardHeader>
-          <CardTitle>Receitas vs Despesas (No Período)</CardTitle>
+        <CardHeader className="flex flex-row justify-between items-center pb-2">
+          <CardTitle>Receitas vs Despesas (Visão Anual)</CardTitle>
+          <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border">
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentYear(y => y - 1)}>
+              <ChevronLeft size={14} />
+            </Button>
+            <span className="font-bold min-w-[80px] text-center text-sm">
+              {currentYear}
+            </span>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentYear(y => y + 1)}>
+              <ChevronRight size={14} />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="h-[350px] w-full">

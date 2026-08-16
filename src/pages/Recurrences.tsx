@@ -178,7 +178,7 @@ export default function Recurrences() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {recurrences?.map((r) => {
+            {recurrences?.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()).map((r) => {
               const cat = categories?.find(c => c.id === r.categoryId);
               const sub = subcategories?.find(s => s.id === r.subcategoryId);
               return (

@@ -30,7 +30,7 @@ import {
   DialogTitle,
 
 } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function Transactions() {
   const accounts = useLiveQuery(() => db.accounts.orderBy('name').toArray());
@@ -59,18 +59,15 @@ export default function Transactions() {
   const [moverTransaction, setMoverTransaction] = useState<any | null>(null);
   const [moverMonthStr, setMoverMonthStr] = useState("");
 
-  const [periodFilter, setPeriodFilter] = useState("Mês Atual");
-  const [customStartDate, setCustomStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(1);
-    return d.toISOString().split("T")[0];
-  });
-  const [customEndDate, setCustomEndDate] = useState(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + 1);
-    d.setDate(0);
-    return d.toISOString().split("T")[0];
-  });
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+
+  const navigateMonth = (direction: number) => {
+    setCurrentDate(prev => {
+      const d = new Date(prev);
+      d.setMonth(d.getMonth() + direction);
+      return d;
+    });
+  };
 
   const selectedSubcat = subcategories?.find(s => s.id === subcategoryId);
   const isTransfer = selectedSubcat?.type === 'Transferência';
@@ -311,18 +308,10 @@ export default function Transactions() {
   };
 
   // Define o targetMonthStr no escopo do componente para o banner
-  const isMonthFilter = periodFilter === 'Mês Atual' || periodFilter === 'Próximo mês';
+  const isMonthFilter = true;
   const targetMonthStr = useMemo(() => {
-    if (periodFilter === 'Mês Atual') {
-      const d = new Date();
-      return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
-    } else if (periodFilter === 'Próximo mês') {
-      const d = new Date();
-      d.setMonth(d.getMonth() + 1);
-      return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
-    }
-    return "";
-  }, [periodFilter]);
+    return `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
+  }, [currentDate]);
 
   // Calcula o running balance e aplica filtro de período
   const { filteredTransactions, openingBalances } = useMemo(() => {
@@ -330,31 +319,9 @@ export default function Transactions() {
        return { filteredTransactions: [], openingBalances: {} };
     }
 
-    // Definir as datas de início e fim baseadas no filtro
-    let startD = new Date();
-    let endD = new Date();
-    startD.setHours(0,0,0,0);
-    endD.setHours(23,59,59,999);
-
-    if (periodFilter === 'Mês Atual') {
-      startD.setDate(1);
-      endD.setMonth(endD.getMonth() + 1);
-      endD.setDate(0);
-    } else if (periodFilter === 'Próximo mês') {
-      startD.setMonth(startD.getMonth() + 1);
-      startD.setDate(1);
-      endD.setMonth(endD.getMonth() + 2);
-      endD.setDate(0);
-    } else if (periodFilter === 'Últimos 30 dias') {
-      startD.setDate(startD.getDate() - 30);
-    } else if (periodFilter === 'Últimos 60 dias') {
-      startD.setDate(startD.getDate() - 60);
-    } else if (periodFilter === 'Últimos 90 dias') {
-      startD.setDate(startD.getDate() - 90);
-    } else if (periodFilter === 'Personalizado') {
-      startD = new Date(customStartDate + "T00:00:00");
-      endD = new Date(customEndDate + "T23:59:59");
-    }
+    // Definir as datas de início e fim baseadas no filtro de mês
+    let startD = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1, 0, 0, 0, 0);
+    let endD = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
 
     const startTimestamp = startD.getTime();
     const endTimestamp = endD.getTime();
@@ -375,15 +342,9 @@ export default function Transactions() {
       const tTime = new Date(t.date + "T12:00:00").getTime();
       let isBeforeTarget = false;
 
-      if (acc.isCreditCard && acc.closingDay && acc.dueDay) {
-         if (isMonthFilter) {
-            const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay);
-            if (billMonth < targetMonthStr) {
-               isBeforeTarget = true;
-            }
-         } else {
-            if (tTime < startTimestamp) isBeforeTarget = true;
-         }
+      if (acc.isCreditCard) {
+         // Não acumula saldo de faturas anteriores para cartão, assumimos que foram pagas
+         isBeforeTarget = false;
       } else {
          if (tTime < startTimestamp) isBeforeTarget = true;
       }
@@ -445,7 +406,7 @@ export default function Transactions() {
       filteredTransactions: periodTxs,
       openingBalances
     };
-  }, [transactions, accounts, categories, subcategories, periodFilter, customStartDate, customEndDate]);
+  }, [transactions, accounts, categories, subcategories, currentDate]);
 
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -456,27 +417,17 @@ export default function Transactions() {
         <h1 className="text-3xl font-bold tracking-tight">Transações</h1>
         
         <div className="flex flex-col sm:flex-row items-center gap-4">
-          {periodFilter === "Personalizado" && (
-            <div className="flex items-center gap-2">
-              <Input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="w-[140px]" />
-              <span className="text-sm text-muted-foreground">até</span>
-              <Input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="w-[140px]" />
-            </div>
-          )}
-          
-          <Select value={periodFilter} onValueChange={setPeriodFilter}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Mês Atual">Mês Atual</SelectItem>
-              <SelectItem value="Próximo mês">Próximo mês</SelectItem>
-              <SelectItem value="Últimos 30 dias">Últimos 30 dias</SelectItem>
-              <SelectItem value="Últimos 60 dias">Últimos 60 dias</SelectItem>
-              <SelectItem value="Últimos 90 dias">Últimos 90 dias</SelectItem>
-              <SelectItem value="Personalizado">Personalizado</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigateMonth(-1)}>
+              <ChevronLeft size={16} />
+            </Button>
+            <span className="font-bold min-w-[150px] text-center text-sm capitalize">
+              {currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            </span>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigateMonth(1)}>
+              <ChevronRight size={16} />
+            </Button>
+          </div>
         </div>
 
         
