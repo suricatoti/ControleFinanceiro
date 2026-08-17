@@ -51,19 +51,32 @@ O coração da sua estratégia financeira.
 ### 2. 📝 Transações
 Aqui é o seu Extrato Bancário em tempo real.
 - **Nova Transação:** Adicione receitas e despesas.
-- **Parcelamentos Inteligentes:** Se você comprar algo parcelado, basta digitar o número de parcelas. O sistema fará a divisão matemática perfeita (sem erros de centavos) e empurrará cada parcela para os meses futuros com uma anotação visual (ex: *Parcela 1 de 3*).
-- **Transferências:** Ao escolher uma categoria de Transferência, a tela muda e pede uma "Conta de Destino". O valor sairá de uma e entrará na outra automaticamente.
-- **Saldo Automático:** O sistema calcula o "Saldo Anterior" em relação à data pesquisada e lista o saldo correndo ao lado de cada registro.
+- **Parcelamentos Inteligentes:** Ao digitar o número de parcelas, o sistema fará a divisão exata (corrigindo arredondamentos de centavos na primeira parcela) e lançará cada cota nos meses futuros com anotação visual (ex: *Parcela 1 de 3*).
+- **Transferências:** Escolhendo o tipo "Transferência", o sistema pede uma "Conta de Origem" e "Conta de Destino". O valor debita de uma e credita na outra.
+- **Previsões e Baixas (Status Pendente):** Você pode marcar uma transação como "Pendente" (previsão). Ela fica opaca na lista. Quando o dinheiro de fato sair ou entrar, você clica em **"Baixa"**, podendo inclusive ajustar o valor final se for diferente da previsão.
+- **Conciliação Bancária (Conferência):** Clicando no ícone redondo vazio ao lado de "Excluir", você marca a transação com um "✓" verde, indicando que ela já foi conferida e está igual ao seu extrato bancário oficial. A descrição fica com um risco sutil para facilitar sua revisão.
+- **Saldo Automático:** O sistema calcula o "Saldo Anterior" antes do período filtrado e lista o saldo correndo dinamicamente ao lado de cada registro.
 
-### 3. 📂 Categorias e Subcategorias
+### 3. 💳 Cartões de Crédito (Novo!)
+Contas de cartão de crédito possuem regras exclusivas e muito mais inteligência.
+- Ao criar uma conta e marcar a caixinha "É Cartão de Crédito", você informa o **Dia de Fechamento** e **Dia de Vencimento**.
+- As compras lançadas no cartão deixam de ser agrupadas pelo calendário normal e passam a ser **agrupadas por ciclo de Fatura**. O sistema exibe uma caixa azul avisando qual o ciclo atual, a data das compras abrangidas e o dia do pagamento!
+- **Mover Fatura:** Comprou perto do fechamento e o lançamento caiu na fatura errada? O botão "Mover" na tabela de transações permite forçar manualmente para qual mês/fatura aquela compra específica deve entrar.
+
+### 4. 🔄 Recorrências (Lançamentos Mensais)
+Abandone o trabalho manual! 
+- Na tela de **Recorrências**, você cadastra suas despesas e receitas fixas infinitas (ex: Assinatura da Netflix, Salário Mensal). 
+- O sistema varre automaticamente todos os meses e insere essas transações pendentes no seu fluxo, assim você sempre sabe o quanto já está comprometido para o futuro!
+
+### 5. 📂 Categorias e Subcategorias
 Controle suas árvores de gastos.
 - **Hierarquia:** Toda transação precisa pertencer a uma Subcategoria (ex: Mercado), que por sua vez pertence a uma Categoria Pai (ex: Alimentação).
-- **Classificação Sistêmica:** O sistema te obriga a preencher *Frequência* (Fixo/Variável) e *Natureza* (Essencial/Qualidade de Vida). Isso ajuda a disciplinar como você enxerga o dinheiro!
-- **Regras Imutáveis:** A categoria de `Transferência` possui proteções de sistema e não pode ser apagada.
+- **Classificação Sistêmica:** O sistema pede *Frequência* (Fixo/Variável) e *Natureza* (Essencial/Qualidade de Vida). Isso ajuda a disciplinar como você enxerga o dinheiro!
+- As categorias de transferência do sistema não podem ser excluídas para proteger a integridade do banco de dados.
 
-### 4. 🏦 Contas
+### 6. 🏦 Contas
 Gerencie os saldos de diferentes origens.
-- Você pode criar contas separadas (ex: Itaú, Nubank, Dinheiro Físico) e consultar o extrato filtrando por elas na tela de transações.
+- Você pode criar contas separadas (ex: Itaú, Nubank, Dinheiro Físico) e consultar o extrato filtrando por elas na tela de transações. Conta corrente ou cartão de crédito, tudo centralizado aqui.
 
 ---
 

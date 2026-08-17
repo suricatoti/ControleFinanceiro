@@ -30,7 +30,7 @@ import {
   DialogTitle,
 
 } from "@/components/ui/dialog";
-import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, CheckCircle2, Circle } from "lucide-react";
 
 export default function Transactions() {
   const accounts = useLiveQuery(() => db.accounts.orderBy('name').toArray());
@@ -274,6 +274,12 @@ export default function Transactions() {
       await db.transactions.delete(t.linkedTransactionId);
     }
     await db.transactions.delete(t.id);
+  };
+
+  const toggleReconciled = async (t: any) => {
+    await db.transactions.update(t.id, {
+      reconciled: !t.reconciled
+    });
   };
 
   const openMover = (t: any) => {
@@ -678,9 +684,9 @@ export default function Transactions() {
                     <TableRow key={t.id} className={isPending ? "opacity-60 bg-muted/20" : ""}>
                       <TableCell>{new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</TableCell>
                       <TableCell>{t.categoryName}</TableCell>
-                      <TableCell>
+                      <TableCell className={t.reconciled ? "line-through text-muted-foreground opacity-70" : ""}>
                         {t.description}
-                        {isPending && <span className="ml-2 text-xs font-bold text-orange-500 bg-orange-100 px-1 py-0.5 rounded">Pendente</span>}
+                        {isPending && <span className="ml-2 text-xs font-bold text-orange-500 bg-orange-100 px-1 py-0.5 rounded no-underline">Pendente</span>}
                       </TableCell>
                       <TableCell className="text-right text-blue-500">
                         {t.amount > 0 ? formatCurrency(t.amount) : '-'}
@@ -702,6 +708,15 @@ export default function Transactions() {
                             <Button variant="secondary" size="sm" onClick={() => openMover(t)}>Mover</Button>
                           )}
                           <Button variant="destructive" size="sm" onClick={() => handleDelete(t)}>Excluir</Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className={`h-8 w-8 ${t.reconciled ? 'text-green-500 hover:text-green-600 hover:bg-green-50' : 'text-gray-400 hover:text-gray-600'}`}
+                            onClick={() => toggleReconciled(t)}
+                            title={t.reconciled ? "Marcar como não conferido" : "Marcar como conferido"}
+                          >
+                            {t.reconciled ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>

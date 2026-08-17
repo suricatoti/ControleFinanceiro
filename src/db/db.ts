@@ -46,6 +46,7 @@ export interface Transaction {
   recurringGroupId?: string;
   status?: 'Pendente' | 'Paga';
   creditCardBillDate?: string;
+  reconciled?: boolean;
 }
 
 const db = new Dexie('FinanceDB') as Dexie & {
