@@ -131,11 +131,11 @@ export default function Dashboard() {
     const expenseMap: Record<string, number> = {};
 
     filteredTransactions.forEach(t => {
-      const cat = categories.find(c => c.id === t.categoryId);
-      if (!cat) return;
-      
       const subcat = t.subcategoryId ? subcategories.find(s => s.id === t.subcategoryId) : null;
       if (subcat?.type === 'Transferência') return;
+      
+      const cat = categories.find(c => c.id === (subcat ? subcat.categoryId : t.categoryId));
+      if (!cat) return;
 
       const incomeLabel = subcat ? `${cat.name} > ${subcat.name}` : cat.name;
       const expenseLabel = (showSubcategoriesExpense && subcat) ? `${cat.name} > ${subcat.name}` : cat.name;
@@ -203,8 +203,8 @@ export default function Dashboard() {
       return tTime >= startTimestamp && tTime <= endTimestamp && t.status === 'Pendente';
     }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .map(t => {
-         const cat = categories?.find(c => c.id === t.categoryId);
          const subcat = subcategories?.find(s => s.id === t.subcategoryId);
+         const cat = categories?.find(c => c.id === (subcat ? subcat.categoryId : t.categoryId));
          return {
            ...t,
            categoryName: subcat ? `${cat?.name} > ${subcat.name}` : cat?.name || 'Desconhecida'

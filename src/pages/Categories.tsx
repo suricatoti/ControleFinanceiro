@@ -133,6 +133,7 @@ export default function Categories() {
     }
 
     if (editingSubcategoryId) {
+      const oldSubcat = await db.subcategories.get(editingSubcategoryId);
       await db.subcategories.update(editingSubcategoryId, {
         name: subCatName,
         categoryId: subCatParentId,
@@ -140,6 +141,13 @@ export default function Categories() {
         frequency: finalFreq as "Fixo" | "Variável" | "N/A",
         nature: finalNature as "Essencial" | "Qualidade de Vida" | "N/A",
       });
+      
+      if (oldSubcat && oldSubcat.categoryId !== subCatParentId) {
+        await db.transactions.where('subcategoryId').equals(editingSubcategoryId).modify({
+          categoryId: subCatParentId
+        });
+      }
+      
       setEditingSubcategoryId(null);
     } else {
       await db.subcategories.add({
@@ -210,7 +218,7 @@ export default function Categories() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <h1 className="text-3xl font-bold tracking-tight mb-6">Cadastros</h1>
       
       <Tabs defaultValue="contas" className="w-full">
@@ -222,8 +230,8 @@ export default function Categories() {
         
         {/* TAB DE CONTAS */}
         <TabsContent value="contas">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="md:col-span-1 bg-card p-6 rounded-lg border shadow-sm h-fit">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1 bg-card p-6 rounded-lg border shadow-sm h-fit">
               <h2 className="text-xl font-semibold mb-4">Nova Conta</h2>
               <form onSubmit={handleAddAccount} className="space-y-4">
                 <div className="space-y-2">
@@ -303,14 +311,14 @@ export default function Categories() {
               </form>
             </div>
             
-            <div className="md:col-span-2">
+            <div className="lg:col-span-2">
               <div className="border rounded-md bg-card">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nome</TableHead>
                       <TableHead className="text-right">Saldo Inicial</TableHead>
-                      <TableHead className="w-[100px]"></TableHead>
+                      <TableHead className="w-[180px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -348,8 +356,8 @@ export default function Categories() {
 
         {/* TAB DE CATEGORIAS */}
         <TabsContent value="categorias">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="md:col-span-1 bg-card p-6 rounded-lg border shadow-sm h-fit">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1 bg-card p-6 rounded-lg border shadow-sm h-fit">
               <h2 className="text-xl font-semibold mb-4">Nova Categoria</h2>
               <form onSubmit={handleAddCategory} className="space-y-4">
                 <div className="space-y-2">
@@ -375,13 +383,13 @@ export default function Categories() {
               </form>
             </div>
             
-            <div className="md:col-span-2">
+            <div className="lg:col-span-2">
               <div className="border rounded-md bg-card">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nome</TableHead>
-                      <TableHead className="w-[100px]"></TableHead>
+                      <TableHead className="w-[180px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -421,8 +429,8 @@ export default function Categories() {
 
         {/* TAB DE SUBCATEGORIAS */}
         <TabsContent value="subcategorias">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="md:col-span-1 bg-card p-6 rounded-lg border shadow-sm h-fit">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1 bg-card p-6 rounded-lg border shadow-sm h-fit">
               <h2 className="text-xl font-semibold mb-4">Nova Subcategoria</h2>
               <form onSubmit={handleAddSubcategory} className="space-y-4">
                 <div className="space-y-2">
@@ -502,7 +510,7 @@ export default function Categories() {
               </form>
             </div>
             
-            <div className="md:col-span-2">
+            <div className="lg:col-span-2">
               <div className="border rounded-md bg-card">
                 <Table>
                   <TableHeader>
@@ -512,7 +520,7 @@ export default function Categories() {
                       <TableHead>Tipo</TableHead>
                       <TableHead>Frequência</TableHead>
                       <TableHead>Natureza</TableHead>
-                      <TableHead className="w-[100px]"></TableHead>
+                      <TableHead className="w-[180px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

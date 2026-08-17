@@ -391,8 +391,8 @@ export default function Transactions() {
       if (include) {
         runningBalances[t.accountId] += t.amount;
         
-        const cat = categories.find(c => c.id === t.categoryId);
         const subcat = t.subcategoryId ? subcategories.find(s => s.id === t.subcategoryId) : null;
+        const cat = categories.find(c => c.id === (subcat ? subcat.categoryId : t.categoryId));
         
         let fullCategoryName = cat?.name || 'Desconhecida';
         if (subcat) {
