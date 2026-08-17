@@ -684,7 +684,7 @@ export default function Transactions() {
                     <TableRow key={t.id} className={isPending ? "opacity-60 bg-muted/20" : ""}>
                       <TableCell>{new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</TableCell>
                       <TableCell>{t.categoryName}</TableCell>
-                      <TableCell className={t.reconciled ? "line-through text-muted-foreground opacity-70" : ""}>
+                      <TableCell>
                         {t.description}
                         {isPending && <span className="ml-2 text-xs font-bold text-orange-500 bg-orange-100 px-1 py-0.5 rounded no-underline">Pendente</span>}
                       </TableCell>

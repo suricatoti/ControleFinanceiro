@@ -39,6 +39,7 @@ export default function Dashboard() {
   
   const [showSubcategoriesExpense, setShowSubcategoriesExpense] = useState(false);
   const [includeCreditCards, setIncludeCreditCards] = useState(false);
+  const [includePending, setIncludePending] = useState(false);
   const [showIncomeValues, setShowIncomeValues] = useState(false);
   const [showExpenseValues, setShowExpenseValues] = useState(false);
 
@@ -52,7 +53,7 @@ export default function Dashboard() {
     const et = endD.getTime();
 
     const filtered = transactions?.reduce((accList, t) => {
-      if (t.status === 'Pendente') return accList;
+      if (t.status === 'Pendente' && !includePending) return accList;
       
       const acc = accounts?.find(a => a.id === t.accountId);
       let effectiveTime = new Date(t.date + "T12:00:00").getTime();
@@ -79,7 +80,7 @@ export default function Dashboard() {
     }, [] as any[]) || [];
 
     return { filteredTransactions: filtered, startTimestamp: st, endTimestamp: et };
-  }, [transactions, currentMonth, accounts, includeCreditCards]);
+  }, [transactions, currentMonth, accounts, includeCreditCards, includePending]);
 
   // 1. Prepara dados do Gráfico de Barras (Receitas vs Despesas por mês)
   const barChartData = useMemo(() => {
@@ -92,7 +93,7 @@ export default function Dashboard() {
     }
 
     transactions.forEach(t => {
-      if (t.status === 'Pendente') return;
+      if (t.status === 'Pendente' && !includePending) return;
       
       const acc = accounts?.find(a => a.id === t.accountId);
       let effectiveTime = new Date(t.date + "T12:00:00").getTime();
@@ -121,7 +122,7 @@ export default function Dashboard() {
     });
 
     return Object.values(dataObj).sort((a, b) => a.label.localeCompare(b.label));
-  }, [transactions, currentYear, subcategories, accounts, includeCreditCards]);
+  }, [transactions, currentYear, subcategories, accounts, includeCreditCards, includePending]);
 
   // 2. Prepara dados dos Gráficos de Rosca (Receitas e Despesas por Categoria/Subcategoria)
   const { pieIncome, pieExpense } = useMemo(() => {
@@ -174,7 +175,7 @@ export default function Dashboard() {
       let balance = acc.isCreditCard ? 0 : (acc.initialBalance || 0);
       
       transactions.forEach(t => {
-        if (t.accountId === acc.id && t.status !== 'Pendente') {
+        if (t.accountId === acc.id && (t.status !== 'Pendente' || includePending)) {
           if (acc.isCreditCard && acc.closingDay && acc.dueDay) {
             // Cartão de crédito: saldo é apenas a soma da fatura atual (assumindo que anteriores foram pagas)
             const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay);
@@ -193,7 +194,7 @@ export default function Dashboard() {
 
       return { ...acc, currentBalance: balance };
     });
-  }, [accounts, transactions, endTimestamp, currentMonth]);
+  }, [accounts, transactions, endTimestamp, currentMonth, includePending]);
 
   const pendingTransactions = useMemo(() => {
     if (!transactions) return [];
@@ -223,6 +224,11 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold tracking-tight">Visão Geral</h1>
         
         <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex items-center gap-2 bg-muted/30 px-3 py-2 rounded-md border">
+            <input type="checkbox" id="global-include-pending" checked={includePending} onChange={(e) => setIncludePending(e.target.checked)} className="h-4 w-4 cursor-pointer" />
+            <label htmlFor="global-include-pending" className="text-sm font-medium leading-none cursor-pointer select-none">Incluir Previstas</label>
+          </div>
+          
           <div className="flex items-center gap-2 bg-muted/30 px-3 py-2 rounded-md border">
             <input type="checkbox" id="global-include-credit-card" checked={includeCreditCards} onChange={(e) => setIncludeCreditCards(e.target.checked)} className="h-4 w-4 cursor-pointer" />
             <label htmlFor="global-include-credit-card" className="text-sm font-medium leading-none cursor-pointer select-none">Incluir Cartões</label>
