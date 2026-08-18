@@ -332,8 +332,12 @@ export default function Transactions() {
     const startTimestamp = startD.getTime();
     const endTimestamp = endD.getTime();
 
-    // Ordena as transações cronologicamente
-    const sorted = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Ordena as transações cronologicamente (se mesmo dia, entradas primeiro)
+    const sorted = [...transactions].sort((a, b) => {
+      const timeDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (timeDiff !== 0) return timeDiff;
+      return b.amount - a.amount;
+    });
 
     // 1. Calcula o saldo ANTERIOR (acumulando apenas as transações antes da data de início)
     const openingBalances: Record<string, number> = {};
@@ -699,10 +703,9 @@ export default function Transactions() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {isPending ? (
+                          <Button variant="outline" size="sm" onClick={() => handleEdit(t)}>Editar</Button>
+                          {isPending && (
                             <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => openBaixa(t)}>Baixa</Button>
-                          ) : (
-                            <Button variant="outline" size="sm" onClick={() => handleEdit(t)}>Editar</Button>
                           )}
                           {acc.isCreditCard && (
                             <Button variant="secondary" size="sm" onClick={() => openMover(t)}>Mover</Button>

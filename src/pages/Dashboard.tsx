@@ -202,7 +202,11 @@ export default function Dashboard() {
     return transactions.filter(t => {
       const tTime = new Date(t.date + "T12:00:00").getTime();
       return tTime >= startTimestamp && tTime <= endTimestamp && t.status === 'Pendente';
-    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    }).sort((a, b) => {
+      const timeDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (timeDiff !== 0) return timeDiff;
+      return b.amount - a.amount;
+    })
       .map(t => {
          const subcat = subcategories?.find(s => s.id === t.subcategoryId);
          const cat = categories?.find(c => c.id === (subcat ? subcat.categoryId : t.categoryId));
