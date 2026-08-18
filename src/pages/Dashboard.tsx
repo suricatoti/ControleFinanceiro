@@ -5,7 +5,7 @@ import { getNaturalBillMonth } from "@/lib/creditCardUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell 
+  PieChart, Pie, Cell, LineChart, Line 
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -28,6 +28,7 @@ export default function Dashboard() {
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
+  const [futureYear, setFutureYear] = useState(() => new Date().getFullYear());
   
   const navigateMonth = (direction: number) => {
     setCurrentMonth(prev => {
@@ -216,6 +217,44 @@ export default function Dashboard() {
          };
       });
   }, [transactions, startTimestamp, endTimestamp, categories, subcategories]);
+
+  // 4. Prepara os saldos projetados do ano selecionado (apenas contas não-cartão)
+  const futureBalancesData = useMemo(() => {
+    if (!accounts || !transactions) return [];
+
+    const nonCardAccounts = accounts.filter(a => !a.isCreditCard);
+    if (nonCardAccounts.length === 0) return [];
+
+    const data = [];
+
+    for (let i = 0; i < 12; i++) {
+      const monthDate = new Date(futureYear, i, 1);
+      const label = `${monthDate.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}/${monthDate.getFullYear().toString().slice(-2)}`;
+      
+      const endOfMonthTimestamp = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+
+      const monthData: any = { label };
+
+      nonCardAccounts.forEach(acc => {
+        let balance = acc.initialBalance || 0;
+        
+        transactions.forEach(t => {
+          if (t.accountId === acc.id) {
+            const tTime = new Date(t.date + "T12:00:00").getTime();
+            if (tTime <= endOfMonthTimestamp) {
+              balance += t.amount;
+            }
+          }
+        });
+        
+        monthData[acc.name] = balance;
+      });
+
+      data.push(monthData);
+    }
+
+    return data;
+  }, [accounts, transactions, futureYear]);
 
   const totalBalance = accountBalances.reduce((acc, curr) => acc + curr.currentBalance, 0);
 
@@ -433,6 +472,49 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {futureBalancesData.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row justify-between items-center pb-2">
+            <CardTitle>Planejamento Anual (Evolução de Saldo)</CardTitle>
+            <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border">
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFutureYear(y => y - 1)}>
+                <ChevronLeft size={14} />
+              </Button>
+              <span className="font-bold min-w-[80px] text-center text-sm">
+                {futureYear}
+              </span>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFutureYear(y => y + 1)}>
+                <ChevronRight size={14} />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[350px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={futureBalancesData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                  <XAxis dataKey="label" />
+                  <YAxis tickFormatter={(val) => `R$ ${val}`} />
+                  <Tooltip formatter={(val: any) => formatCurrency(val)} />
+                  <Legend />
+                  {accounts?.filter(a => !a.isCreditCard).map((acc, index) => (
+                    <Line 
+                      key={acc.id} 
+                      type="monotone" 
+                      dataKey={acc.name} 
+                      stroke={COLORS[index % COLORS.length]} 
+                      strokeWidth={2}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
