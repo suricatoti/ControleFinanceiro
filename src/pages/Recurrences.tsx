@@ -44,6 +44,7 @@ export default function Recurrences() {
   const [accountId, setAccountId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [period, setPeriod] = useState<"mensal" | "anual">("mensal");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +64,8 @@ export default function Recurrences() {
         accountId,
         categoryId: subcat.categoryId,
         subcategoryId,
-        startDate
+        startDate,
+        period
       });
       
       // Update pending transactions in the future
@@ -93,14 +95,19 @@ export default function Recurrences() {
         accountId,
         categoryId: subcat.categoryId,
         subcategoryId,
-        startDate
+        startDate,
+        period
       });
 
-      // Generate next 12 months of pending transactions
+      // Generate next 12 months (or years) of pending transactions
       const startD = new Date(startDate + "T12:00:00Z");
       for (let i = 0; i < 12; i++) {
         const d = new Date(startD);
-        d.setUTCMonth(d.getUTCMonth() + i);
+        if (period === 'anual') {
+          d.setUTCFullYear(d.getUTCFullYear() + i);
+        } else {
+          d.setUTCMonth(d.getUTCMonth() + i);
+        }
         
         await db.transactions.add({
           id: crypto.randomUUID(),
@@ -127,6 +134,7 @@ export default function Recurrences() {
     setAccountId(r.accountId);
     setSubcategoryId(r.subcategoryId);
     setStartDate(r.startDate);
+    setPeriod(r.period || "mensal");
     setIsOpen(true);
   };
 
@@ -152,6 +160,7 @@ export default function Recurrences() {
     setAccountId("");
     setSubcategoryId("");
     setStartDate(new Date().toISOString().split("T")[0]);
+    setPeriod("mensal");
   };
 
   const formatCurrency = (val: number) => 
@@ -178,14 +187,25 @@ export default function Recurrences() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {recurrences?.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()).map((r) => {
+            {recurrences?.sort((a, b) => {
+              const catA = categories?.find(c => c.id === a.categoryId)?.name || '';
+              const catB = categories?.find(c => c.id === b.categoryId)?.name || '';
+              if (catA !== catB) return catA.localeCompare(catB);
+              
+              const subA = subcategories?.find(s => s.id === a.subcategoryId)?.name || '';
+              const subB = subcategories?.find(s => s.id === b.subcategoryId)?.name || '';
+              return subA.localeCompare(subB);
+            }).map((r) => {
               const cat = categories?.find(c => c.id === r.categoryId);
               const sub = subcategories?.find(s => s.id === r.subcategoryId);
               return (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.description}</TableCell>
                   <TableCell>{cat?.name} {sub ? `> ${sub.name}` : ''}</TableCell>
-                  <TableCell>{new Date(r.startDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</TableCell>
+                  <TableCell>
+                    {new Date(r.startDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                    <span className="ml-2 text-xs text-muted-foreground">({r.period === 'anual' ? 'Anual' : 'Mensal'})</span>
+                  </TableCell>
                   <TableCell className={`text-right font-bold ${r.amount > 0 ? 'text-blue-500' : 'text-red-500'}`}>
                     {formatCurrency(Math.abs(r.amount))}
                   </TableCell>
@@ -238,7 +258,20 @@ export default function Recurrences() {
             <div className="space-y-2">
               <Label>A partir de (Data Inicial)</Label>
               <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
-              <p className="text-xs text-muted-foreground">Esta data definirá o dia do mês para todas as contas futuras.</p>
+              <p className="text-xs text-muted-foreground">Esta data definirá o dia do mês (ou ano) para todas as contas futuras.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Periodicidade</Label>
+              <Select value={period} onValueChange={(v: "mensal" | "anual") => setPeriod(v)} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a periodicidade..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mensal">Mensal</SelectItem>
+                  <SelectItem value="anual">Anual</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

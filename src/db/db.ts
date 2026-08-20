@@ -32,6 +32,7 @@ export interface Recurrence {
   categoryId: string;
   subcategoryId: string;
   startDate: string;
+  period?: 'mensal' | 'anual';
 }
 
 export interface Transaction {
