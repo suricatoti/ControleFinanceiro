@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumericFormat } from "react-number-format";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -166,6 +167,62 @@ export default function Recurrences() {
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
+  const monthlyRecurrences = recurrences?.filter(r => r.period !== 'anual') || [];
+  const annualRecurrences = recurrences?.filter(r => r.period === 'anual') || [];
+
+  const renderTable = (data: typeof recurrences) => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Descrição</TableHead>
+          <TableHead>Categoria</TableHead>
+          <TableHead>Data Inicial</TableHead>
+          <TableHead className="text-right">Valor</TableHead>
+          <TableHead></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {data?.sort((a, b) => {
+          const catA = categories?.find(c => c.id === a.categoryId)?.name || '';
+          const catB = categories?.find(c => c.id === b.categoryId)?.name || '';
+          if (catA !== catB) return catA.localeCompare(catB);
+          
+          const subA = subcategories?.find(s => s.id === a.subcategoryId)?.name || '';
+          const subB = subcategories?.find(s => s.id === b.subcategoryId)?.name || '';
+          return subA.localeCompare(subB);
+        }).map((r) => {
+          const cat = categories?.find(c => c.id === r.categoryId);
+          const sub = subcategories?.find(s => s.id === r.subcategoryId);
+          return (
+            <TableRow key={r.id}>
+              <TableCell className="font-medium">{r.description}</TableCell>
+              <TableCell>{cat?.name} {sub ? `> ${sub.name}` : ''}</TableCell>
+              <TableCell>
+                {new Date(r.startDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+              </TableCell>
+              <TableCell className={`text-right font-bold ${r.amount > 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                {formatCurrency(Math.abs(r.amount))}
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(r)}>Editar</Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleDelete(r.id)}>Excluir</Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          );
+        })}
+        {(!data || data.length === 0) && (
+          <TableRow>
+            <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+              Nenhuma conta recorrente cadastrada.
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  );
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
@@ -175,58 +232,24 @@ export default function Recurrences() {
         </Button>
       </div>
 
-      <div className="border rounded-md bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Descrição</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead>Data Inicial</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
-              <TableHead></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {recurrences?.sort((a, b) => {
-              const catA = categories?.find(c => c.id === a.categoryId)?.name || '';
-              const catB = categories?.find(c => c.id === b.categoryId)?.name || '';
-              if (catA !== catB) return catA.localeCompare(catB);
-              
-              const subA = subcategories?.find(s => s.id === a.subcategoryId)?.name || '';
-              const subB = subcategories?.find(s => s.id === b.subcategoryId)?.name || '';
-              return subA.localeCompare(subB);
-            }).map((r) => {
-              const cat = categories?.find(c => c.id === r.categoryId);
-              const sub = subcategories?.find(s => s.id === r.subcategoryId);
-              return (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.description}</TableCell>
-                  <TableCell>{cat?.name} {sub ? `> ${sub.name}` : ''}</TableCell>
-                  <TableCell>
-                    {new Date(r.startDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                    <span className="ml-2 text-xs text-muted-foreground">({r.period === 'anual' ? 'Anual' : 'Mensal'})</span>
-                  </TableCell>
-                  <TableCell className={`text-right font-bold ${r.amount > 0 ? 'text-blue-500' : 'text-red-500'}`}>
-                    {formatCurrency(Math.abs(r.amount))}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(r)}>Editar</Button>
-                      <Button variant="destructive" size="sm" onClick={() => handleDelete(r.id)}>Excluir</Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-            {recurrences?.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                  Nenhuma conta recorrente cadastrada.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+      <div className="grid grid-cols-1 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recorrências Mensais</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {renderTable(monthlyRecurrences)}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recorrências Anuais</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {renderTable(annualRecurrences)}
+          </CardContent>
+        </Card>
       </div>
 
       <Dialog open={isOpen} onOpenChange={(open) => {
