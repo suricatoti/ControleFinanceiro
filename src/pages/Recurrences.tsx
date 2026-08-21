@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/db/db";
+import { useWallet } from "@/contexts/WalletContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,10 +32,11 @@ import {
 } from "@/components/ui/select";
 
 export default function Recurrences() {
-  const accounts = useLiveQuery(() => db.accounts.toArray());
-  const categories = useLiveQuery(() => db.categories.toArray());
-  const subcategories = useLiveQuery(() => db.subcategories.toArray());
-  const recurrences = useLiveQuery(() => db.recurrences.toArray());
+  const { db } = useWallet();
+  const accounts = useLiveQuery(() => db.accounts.toArray(), [db]);
+  const categories = useLiveQuery(() => db.categories.toArray(), [db]);
+  const subcategories = useLiveQuery(() => db.subcategories.toArray(), [db]);
+  const recurrences = useLiveQuery(() => db.recurrences.toArray(), [db]);
 
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

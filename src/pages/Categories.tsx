@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { NumericFormat } from "react-number-format";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/db/db";
+import { useWallet } from "@/contexts/WalletContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,9 +23,10 @@ import {
 } from "@/components/ui/table";
 
 export default function Categories() {
-  const accounts = useLiveQuery(() => db.accounts.orderBy('name').toArray());
-  const categories = useLiveQuery(() => db.categories.orderBy('name').toArray());
-  const subcategories = useLiveQuery(() => db.subcategories.orderBy('name').toArray());
+  const { db } = useWallet();
+  const accounts = useLiveQuery(() => db.accounts.orderBy('name').toArray(), [db]);
+  const categories = useLiveQuery(() => db.categories.orderBy('name').toArray(), [db]);
+  const subcategories = useLiveQuery(() => db.subcategories.orderBy('name').toArray(), [db]);
 
   const sortedSubcategories = useMemo(() => {
     if (!subcategories || !categories) return [];

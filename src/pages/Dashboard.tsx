@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/db/db";
+import { useWallet } from "@/contexts/WalletContext";
 import { getNaturalBillMonth } from "@/lib/creditCardUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
@@ -21,10 +21,11 @@ import {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#a855f7', '#ec4899', '#f43f5e'];
 
 export default function Dashboard() {
-  const transactions = useLiveQuery(() => db.transactions.toArray());
-  const categories = useLiveQuery(() => db.categories.toArray());
-  const subcategories = useLiveQuery(() => db.subcategories.toArray());
-  const accounts = useLiveQuery(() => db.accounts.toArray());
+  const { db } = useWallet();
+  const transactions = useLiveQuery(() => db.transactions.toArray(), [db]);
+  const categories = useLiveQuery(() => db.categories.toArray(), [db]);
+  const subcategories = useLiveQuery(() => db.subcategories.toArray(), [db]);
+  const accounts = useLiveQuery(() => db.accounts.toArray(), [db]);
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());

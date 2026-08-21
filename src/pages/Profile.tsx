@@ -1,11 +1,12 @@
 import { useState, useRef } from "react";
-import { db } from "@/db/db";
+import { useWallet } from "@/contexts/WalletContext";
 import { exportDB, importInto } from "dexie-export-import";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Upload } from "lucide-react";
 
 export default function Profile() {
+  const { db, activeWallet } = useWallet();
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -17,7 +18,8 @@ export default function Profile() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `financas_backup_${new Date().toISOString().split("T")[0]}.json`;
+      const walletName = activeWallet ? activeWallet.name.replace(/\s+/g, '_').toLowerCase() : 'principal';
+      link.download = `financas_backup_${walletName}_${new Date().toISOString().split("T")[0]}.json`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {

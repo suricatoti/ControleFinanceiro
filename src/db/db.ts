@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import { initialAccounts, initialCategories, initialSubcategories } from './initialData';
+import { initialCategories, initialSubcategories } from './initialData';
 
 export interface Account {
   id: string;
@@ -50,52 +50,57 @@ export interface Transaction {
   reconciled?: boolean;
 }
 
-const db = new Dexie('FinanceDB') as Dexie & {
-  accounts: EntityTable<Account, 'id'>;
-  categories: EntityTable<Category, 'id'>;
-  subcategories: EntityTable<Subcategory, 'id'>;
-  transactions: EntityTable<Transaction, 'id'>;
-  recurrences: EntityTable<Recurrence, 'id'>;
-};
+export class AppDatabase extends Dexie {
+  accounts!: EntityTable<Account, 'id'>;
+  categories!: EntityTable<Category, 'id'>;
+  subcategories!: EntityTable<Subcategory, 'id'>;
+  transactions!: EntityTable<Transaction, 'id'>;
+  recurrences!: EntityTable<Recurrence, 'id'>;
 
-db.version(1).stores({
-  accounts: 'id, name',
-  categories: 'id, name, type',
-  subcategories: 'id, categoryId, name, type',
-  transactions: 'id, date, accountId, categoryId, subcategoryId',
-});
+  constructor(dbName: string) {
+    super(dbName);
+    
+    this.version(1).stores({
+      accounts: 'id, name',
+      categories: 'id, name, type',
+      subcategories: 'id, categoryId, name, type',
+      transactions: 'id, date, accountId, categoryId, subcategoryId',
+    });
 
-// Popula o banco com cadastros iniciais caso ele esteja vazio (nova instalação)
-db.on('populate', async () => {
-  await db.accounts.bulkAdd(initialAccounts);
-  await db.categories.bulkAdd(initialCategories);
-  await db.subcategories.bulkAdd(initialSubcategories as any);
-});
+    // Popula o banco com cadastros iniciais caso ele esteja vazio (nova instalação)
+    this.on('populate', async () => {
+      // Como o usuário pediu, não vamos inserir contas iniciais, apenas categorias e subcategorias
+      await this.categories.bulkAdd(initialCategories);
+      await this.subcategories.bulkAdd(initialSubcategories as any);
+    });
 
-db.version(2).stores({
-  accounts: 'id, name',
-});
+    this.version(2).stores({
+      accounts: 'id, name',
+    });
 
-db.version(3).stores({
-  subcategories: 'id, name, categoryId',
-});
+    this.version(3).stores({
+      subcategories: 'id, name, categoryId',
+    });
 
-db.version(4).stores({
-  categories: 'id, name',
-  subcategories: 'id, name, categoryId, type, frequency, nature',
-});
+    this.version(4).stores({
+      categories: 'id, name',
+      subcategories: 'id, name, categoryId, type, frequency, nature',
+    });
 
-db.version(5).stores({
-  recurrences: 'id, accountId, categoryId, subcategoryId',
-  transactions: 'id, date, accountId, categoryId, subcategoryId, recurringGroupId, status'
-}).upgrade(tx => {
-  return tx.table('transactions').toCollection().modify(transaction => {
-    transaction.status = 'Paga';
-  });
-});
+    this.version(5).stores({
+      recurrences: 'id, accountId, categoryId, subcategoryId',
+      transactions: 'id, date, accountId, categoryId, subcategoryId, recurringGroupId, status'
+    }).upgrade(tx => {
+      return tx.table('transactions').toCollection().modify(transaction => {
+        transaction.status = 'Paga';
+      });
+    });
 
-db.version(6).stores({
-  transactions: 'id, date, accountId, categoryId, subcategoryId, recurringGroupId, status, creditCardBillDate'
-});
+    this.version(6).stores({
+      transactions: 'id, date, accountId, categoryId, subcategoryId, recurringGroupId, status, creditCardBillDate'
+    });
+  }
+}
 
-export { db };
+// Mantido para compatibilidade temporária onde o Contexto ainda não foi aplicado
+export const db = new AppDatabase('FinanceDB');

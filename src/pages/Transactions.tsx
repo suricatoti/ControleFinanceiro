@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { NumericFormat } from "react-number-format";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/db/db";
+import { useWallet } from "@/contexts/WalletContext";
 import { getCreditCardBillPeriod, getNaturalBillMonth } from "@/lib/creditCardUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,10 +33,11 @@ import {
 import { Plus, ChevronLeft, ChevronRight, CheckCircle2, Circle } from "lucide-react";
 
 export default function Transactions() {
-  const accounts = useLiveQuery(() => db.accounts.orderBy('name').toArray());
-  const categories = useLiveQuery(() => db.categories.orderBy('name').toArray());
-  const subcategories = useLiveQuery(() => db.subcategories.orderBy('name').toArray());
-  const transactions = useLiveQuery(() => db.transactions.toArray());
+  const { db } = useWallet();
+  const accounts = useLiveQuery(() => db.accounts.orderBy('name').toArray(), [db]);
+  const categories = useLiveQuery(() => db.categories.orderBy('name').toArray(), [db]);
+  const subcategories = useLiveQuery(() => db.subcategories.orderBy('name').toArray(), [db]);
+  const transactions = useLiveQuery(() => db.transactions.toArray(), [db]);
 
   const [isOpen, setIsOpen] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
