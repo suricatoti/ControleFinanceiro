@@ -1,12 +1,13 @@
 import { useState, useRef } from "react";
 import { useWallet } from "@/contexts/WalletContext";
+import { AppDatabase } from "@/db/db";
 import { exportDB, importInto } from "dexie-export-import";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Upload } from "lucide-react";
 
 export default function Profile() {
-  const { db, activeWallet } = useWallet();
+  const { db, wallets, activeWalletId } = useWallet();
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -14,12 +15,28 @@ export default function Profile() {
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      const blob = await exportDB(db, { prettyJson: true });
-      const url = URL.createObjectURL(blob);
+      
+      const masterBackup = {
+        type: "financas_master_backup",
+        version: 1,
+        wallets: wallets,
+        activeWalletId: activeWalletId,
+        databases: {} as Record<string, any>
+      };
+
+      for (const wallet of wallets) {
+        const tempDb = new AppDatabase(wallet.dbName);
+        const blob = await exportDB(tempDb, { prettyJson: false });
+        const text = await blob.text();
+        masterBackup.databases[wallet.dbName] = JSON.parse(text);
+        tempDb.close();
+      }
+
+      const masterBlob = new Blob([JSON.stringify(masterBackup, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(masterBlob);
       const link = document.createElement("a");
       link.href = url;
-      const walletName = activeWallet ? activeWallet.name.replace(/\s+/g, '_').toLowerCase() : 'principal';
-      link.download = `financas_backup_${walletName}_${new Date().toISOString().split("T")[0]}.json`;
+      link.download = `financas_backup_completo_${new Date().toISOString().split("T")[0]}.json`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -41,11 +58,41 @@ export default function Profile() {
 
     try {
       setIsImporting(true);
-      await db.delete(); // Limpa o banco atual
-      await db.open();   // Reabre
-      await importInto(db, file, { clearTablesBeforeImport: true });
-      alert("Banco de dados importado com sucesso!");
-      window.location.reload(); // Recarrega para aplicar os dados aos componentes
+      
+      const text = await file.text();
+      let parsed;
+      try {
+        parsed = JSON.parse(text);
+      } catch (e) {
+        // Se falhar no parse, pode ser um JSON inválido, mas o importInto (abaixo) tenta lidar se for do tipo legado
+      }
+
+      if (parsed && parsed.type === "financas_master_backup") {
+        // Restauração Global
+        localStorage.setItem('wallets', JSON.stringify(parsed.wallets));
+        localStorage.setItem('activeWalletId', parsed.activeWalletId);
+
+        for (const wallet of parsed.wallets) {
+          const dbData = parsed.databases[wallet.dbName];
+          if (dbData) {
+            const tempDb = new AppDatabase(wallet.dbName);
+            await tempDb.delete();
+            await tempDb.open();
+            const dbBlob = new Blob([JSON.stringify(dbData)], { type: "application/json" });
+            await importInto(tempDb, dbBlob, { clearTablesBeforeImport: true });
+            tempDb.close();
+          }
+        }
+        alert("Backup global restaurado com sucesso!");
+      } else {
+        // Restauração Legada (Apenas para a carteira ativa)
+        await db.delete();
+        await db.open();
+        await importInto(db, file, { clearTablesBeforeImport: true });
+        alert("Backup legado restaurado na carteira ativa com sucesso!");
+      }
+
+      window.location.reload(); 
     } catch (error) {
       console.error("Erro ao importar:", error);
       alert("Erro ao importar banco de dados.");

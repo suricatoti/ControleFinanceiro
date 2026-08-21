@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Receipt, Tags, User, Repeat, Moon, Sun, Pencil } from "lucide-react";
+import { LayoutDashboard, Receipt, Tags, User, Repeat, Moon, Sun, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
@@ -37,7 +37,7 @@ export function Layout() {
     setTheme(theme === "light" ? "dark" : "light");
   };
 
-  const { wallets, activeWalletId, switchWallet, addWallet, renameWallet, activeWallet } = useWallet();
+  const { wallets, activeWalletId, switchWallet, addWallet, renameWallet, activeWallet, deleteWallet } = useWallet();
   const [isNewWalletOpen, setIsNewWalletOpen] = useState(false);
   const [newWalletName, setNewWalletName] = useState("");
   const [isRenameWalletOpen, setIsRenameWalletOpen] = useState(false);
@@ -57,6 +57,13 @@ export function Layout() {
     if (renameWalletName.trim()) {
       renameWallet(activeWalletId, renameWalletName.trim());
       setIsRenameWalletOpen(false);
+    }
+  };
+
+  const handleDeleteWallet = () => {
+    if (activeWalletId === 'default') return;
+    if (window.confirm(`Tem certeza que deseja excluir permanentemente a carteira "${activeWallet?.name}" e todos os seus dados?`)) {
+      deleteWallet(activeWalletId);
     }
   };
 
@@ -109,6 +116,17 @@ export function Layout() {
               >
                 <Pencil className="h-4 w-4" />
               </Button>
+              {activeWalletId !== 'default' && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-red-400 hover:text-red-500 hover:bg-red-500/10"
+                  onClick={handleDeleteWallet}
+                  title="Excluir Carteira"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
 

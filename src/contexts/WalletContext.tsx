@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { AppDatabase, db as defaultDb } from '@/db/db';
+import { ensureRecurrencesProjected } from '@/lib/recurrenceUtils';
 
 export interface Wallet {
   id: string;
@@ -52,12 +53,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     // Quando a carteira ativa mudar, instanciar o banco correto
     const activeWallet = wallets.find(w => w.id === activeWalletId);
     if (activeWallet) {
-      if (activeWallet.dbName === 'FinanceDB') {
-        setDbInstance(defaultDb);
-      } else {
-        const newDb = new AppDatabase(activeWallet.dbName);
-        setDbInstance(newDb);
-      }
+      const initializeWallet = async () => {
+        if (activeWallet.dbName === 'FinanceDB') {
+          await ensureRecurrencesProjected(defaultDb);
+          setDbInstance(defaultDb);
+        } else {
+          const newDb = new AppDatabase(activeWallet.dbName);
+          await newDb.open();
+          await ensureRecurrencesProjected(newDb);
+          setDbInstance(newDb);
+        }
+      };
+      
+      initializeWallet();
     }
   }, [activeWalletId, wallets]);
 

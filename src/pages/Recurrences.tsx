@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useWallet } from "@/contexts/WalletContext";
+import { ensureRecurrencesProjected } from "@/lib/recurrenceUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -106,28 +107,8 @@ export default function Recurrences() {
         period
       });
 
-      // Generate next 12 months (or years) of pending transactions
-      const startD = new Date(startDate + "T12:00:00Z");
-      for (let i = 0; i < 12; i++) {
-        const d = new Date(startD);
-        if (period === 'anual') {
-          d.setUTCFullYear(d.getUTCFullYear() + i);
-        } else {
-          d.setUTCMonth(d.getUTCMonth() + i);
-        }
-        
-        await db.transactions.add({
-          id: crypto.randomUUID(),
-          date: d.toISOString().split("T")[0],
-          accountId,
-          categoryId: subcat.categoryId,
-          subcategoryId,
-          description,
-          amount: finalAmount,
-          recurringGroupId: newId,
-          status: 'Pendente'
-        });
-      }
+      // Roda o motor de projeção para garantir que essa nova recorrência seja estendida até a data alvo
+      await ensureRecurrencesProjected(db);
     }
 
     setIsOpen(false);
