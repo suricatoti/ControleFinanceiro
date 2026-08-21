@@ -508,7 +508,10 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
                   <XAxis dataKey="label" />
                   <YAxis tickFormatter={(val) => `R$ ${val}`} />
-                  <Tooltip formatter={(val: any) => formatCurrency(val)} />
+                  <Tooltip 
+                    formatter={(val: any) => formatCurrency(val)} 
+                    itemSorter={(item: any) => -(item.value || 0)}
+                  />
                   <Legend />
                   {accounts?.filter(a => !a.isCreditCard).map((acc, index) => (
                     <Line 
