@@ -65,8 +65,7 @@ export default function Recurrences() {
         accountId,
         categoryId: subcat.categoryId,
         subcategoryId,
-        startDate,
-        period
+        // startDate e period não são atualizados na edição
       });
       
       // Update pending transactions in the future
@@ -88,6 +87,12 @@ export default function Recurrences() {
         }
       }
     } else {
+      const todayString = new Date().toISOString().split("T")[0];
+      if (startDate < todayString) {
+        alert("Não é possível criar uma recorrência com data de início no passado.");
+        return;
+      }
+
       const newId = crypto.randomUUID();
       await db.recurrences.add({
         id: newId,
@@ -280,13 +285,22 @@ export default function Recurrences() {
 
             <div className="space-y-2">
               <Label>A partir de (Data Inicial)</Label>
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
-              <p className="text-xs text-muted-foreground">Esta data definirá o dia do mês (ou ano) para todas as contas futuras.</p>
+              <Input 
+                type="date" 
+                value={startDate} 
+                onChange={(e) => setStartDate(e.target.value)} 
+                min={!editingId ? new Date().toISOString().split("T")[0] : undefined}
+                disabled={!!editingId}
+                required 
+              />
+              <p className="text-xs text-muted-foreground">
+                {editingId ? "A data inicial e a periodicidade não podem ser alteradas. Caso precise, recrie a conta." : "Esta data definirá o dia do mês (ou ano) para todas as contas futuras."}
+              </p>
             </div>
 
             <div className="space-y-2">
               <Label>Periodicidade</Label>
-              <Select value={period} onValueChange={(v: "mensal" | "anual") => setPeriod(v)} required>
+              <Select value={period} onValueChange={(v: "mensal" | "anual") => setPeriod(v)} disabled={!!editingId} required>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a periodicidade..." />
                 </SelectTrigger>
