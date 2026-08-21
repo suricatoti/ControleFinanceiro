@@ -236,16 +236,28 @@ export default function Dashboard() {
       const monthData: any = { label };
 
       nonCardAccounts.forEach(acc => {
-        let balance = acc.initialBalance || 0;
+        const accTransactions = transactions.filter(t => t.accountId === acc.id);
         
-        transactions.forEach(t => {
-          if (t.accountId === acc.id) {
+        let startMonthTimestamp = Infinity;
+        if (accTransactions.length > 0) {
+          const firstTxTime = Math.min(...accTransactions.map(t => new Date(t.date + "T12:00:00").getTime()));
+          const firstDate = new Date(firstTxTime);
+          startMonthTimestamp = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1).getTime();
+        } else {
+          const now = new Date();
+          startMonthTimestamp = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        }
+
+        let balance = 0;
+        if (endOfMonthTimestamp >= startMonthTimestamp) {
+          balance = acc.initialBalance || 0;
+          accTransactions.forEach(t => {
             const tTime = new Date(t.date + "T12:00:00").getTime();
             if (tTime <= endOfMonthTimestamp) {
               balance += t.amount;
             }
-          }
-        });
+          });
+        }
         
         monthData[acc.name] = balance;
       });
