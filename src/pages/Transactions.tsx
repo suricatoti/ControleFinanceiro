@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { NumericFormat } from "react-number-format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useWallet } from "@/contexts/WalletContext";
@@ -42,6 +42,10 @@ export default function Transactions() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   
+  const [lastAddedTransactionIds, setLastAddedTransactionIds] = useState<string[]>([]);
+  const [showUndo, setShowUndo] = useState(false);
+  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const [isPending, setIsPending] = useState(false);
   
   const [isBaixaOpen, setIsBaixaOpen] = useState(false);
@@ -73,12 +77,13 @@ export default function Transactions() {
   const selectedSubcat = subcategories?.find(s => s.id === subcategoryId);
   const isTransfer = selectedSubcat?.type === 'Transferência';
 
-  // Atualiza automaticamente o checkbox se a data for futura
-  useEffect(() => {
+  // Atualiza automaticamente o checkbox se a data for futura quando o usuário mudar
+  const handleDateChange = (newDate: string) => {
+    setDate(newDate);
     const todayString = new Date().toISOString().split("T")[0];
-    const isFuture = new Date(date + "T12:00:00Z").getTime() > new Date(todayString + "T12:00:00Z").getTime();
+    const isFuture = new Date(newDate + "T12:00:00Z").getTime() > new Date(todayString + "T12:00:00Z").getTime();
     setIsPending(isFuture);
-  }, [date]);
+  };
 
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +101,8 @@ export default function Transactions() {
     // Usando Number.EPSILON para evitar erros de precisão do JS
     const installmentBaseValue = Math.floor((totalAmount / parsedInstallments) * 100 + Number.EPSILON) / 100;
     const remainder = parseFloat((totalAmount - (installmentBaseValue * parsedInstallments)).toFixed(2));
+
+    const newlyAddedIds: string[] = [];
 
     for (let i = 1; i <= parsedInstallments; i++) {
       const currentAmount = i === 1 ? installmentBaseValue + remainder : installmentBaseValue;
@@ -129,7 +136,8 @@ export default function Transactions() {
                 categoryId,
                 subcategoryId,
                 description: currentDesc,
-                amount: -Math.abs(currentAmount)
+                amount: -Math.abs(currentAmount),
+                status: txStatus
               });
               
               await db.transactions.update(destTx.id, {
@@ -138,7 +146,8 @@ export default function Transactions() {
                 categoryId,
                 subcategoryId,
                 description: currentDesc,
-                amount: Math.abs(currentAmount)
+                amount: Math.abs(currentAmount),
+                status: txStatus
               });
             }
           }
@@ -146,6 +155,8 @@ export default function Transactions() {
         } else {
           const id1 = crypto.randomUUID();
           const id2 = crypto.randomUUID();
+          
+          newlyAddedIds.push(id1, id2);
           
           // Saída (Origem)
         await db.transactions.add({
@@ -189,11 +200,14 @@ export default function Transactions() {
             subcategoryId,
             description: currentDesc,
             amount: finalAmount,
+            status: txStatus,
           });
           setEditingTransactionId(null);
         } else {
+          const newId = crypto.randomUUID();
+          newlyAddedIds.push(newId);
           await db.transactions.add({
-            id: crypto.randomUUID(),
+            id: newId,
             date: currentDate,
             accountId,
             categoryId,
@@ -214,6 +228,25 @@ export default function Transactions() {
     setDescription("");
     setAmount("");
     setInstallments(1);
+
+    if (!editingTransactionId && newlyAddedIds.length > 0) {
+      setLastAddedTransactionIds(newlyAddedIds);
+      setShowUndo(true);
+      if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+      undoTimeoutRef.current = setTimeout(() => {
+        setShowUndo(false);
+        setLastAddedTransactionIds([]);
+      }, 10000); // 10 segundos
+    }
+  };
+
+  const handleUndo = async () => {
+    for (const id of lastAddedTransactionIds) {
+      await db.transactions.delete(id);
+    }
+    setShowUndo(false);
+    setLastAddedTransactionIds([]);
+    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
   };
 
   const handleEdit = async (t: any) => {
@@ -441,6 +474,17 @@ export default function Transactions() {
           </div>
         </div>
 
+        {showUndo && (
+          <div className="w-full bg-green-50 text-green-800 p-3 rounded-md text-sm border border-green-200 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={16} />
+              <span>Transação(ões) registrada(s) com sucesso.</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleUndo} className="h-8 bg-white text-green-700 hover:bg-green-50 hover:text-green-800 border-green-300">
+              Desfazer Adição
+            </Button>
+          </div>
+        )}
         
         <Dialog open={isOpen} onOpenChange={(open) => {
           if (!open) {
@@ -462,7 +506,7 @@ export default function Transactions() {
             <form onSubmit={handleAddTransaction} className="space-y-4 pt-4">
               <div className="space-y-2">
                 <Label>Data</Label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                <Input type="date" value={date} onChange={(e) => handleDateChange(e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label>{isTransfer ? "Conta de Origem" : "Conta"}</Label>
@@ -540,18 +584,16 @@ export default function Transactions() {
                 />
               </div>
 
-              {!editingTransactionId && (
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    id="isPending" 
-                    checked={isPending} 
-                    onChange={(e) => setIsPending(e.target.checked)} 
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" 
-                  />
-                  <Label htmlFor="isPending" className="cursor-pointer">É uma previsão de pagamento? (Pendente)</Label>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="isPending" 
+                  checked={isPending} 
+                  onChange={(e) => setIsPending(e.target.checked)} 
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" 
+                />
+                <Label htmlFor="isPending" className="cursor-pointer">É uma previsão de pagamento? (Pendente)</Label>
+              </div>
 
               {!editingTransactionId && (
                 <div className="space-y-2">
