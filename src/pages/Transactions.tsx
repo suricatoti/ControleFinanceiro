@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import { NumericFormat } from "react-number-format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useWallet } from "@/contexts/WalletContext";
@@ -44,7 +44,7 @@ export default function Transactions() {
   
   const [lastAddedTransactionIds, setLastAddedTransactionIds] = useState<string[]>([]);
   const [showUndo, setShowUndo] = useState(false);
-  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const [isPending, setIsPending] = useState(false);
   

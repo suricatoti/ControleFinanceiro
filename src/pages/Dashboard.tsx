@@ -20,6 +20,56 @@ import {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#a855f7', '#ec4899', '#f43f5e'];
 
+const formatCurrency = (val: number) => 
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+const CustomLineTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const sortedPayload = [...payload].sort((a: any, b: any) => (b.value || 0) - (a.value || 0));
+    const total = sortedPayload.reduce((sum: number, entry: any) => sum + (entry.value || 0), 0);
+    return (
+      <div className="bg-background border border-border rounded-lg shadow-lg p-3 text-sm">
+        <p className="font-bold mb-2 text-foreground">{label}</p>
+        {sortedPayload.map((entry: any, index: number) => (
+          <div key={`item-${index}`} className="flex justify-between gap-4 py-0.5" style={{ color: entry.color }}>
+            <span>{entry.name}</span>
+            <span className="font-medium">{formatCurrency(entry.value)}</span>
+          </div>
+        ))}
+        <div className="flex justify-between gap-4 mt-2 pt-2 border-t border-border font-bold text-foreground">
+          <span>Total</span>
+          <span>{formatCurrency(total)}</span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+const CustomBarTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const receitas = payload.find((p: any) => p.dataKey === 'Receitas')?.value || 0;
+    const despesas = payload.find((p: any) => p.dataKey === 'Despesas')?.value || 0;
+    const saldo = receitas - despesas;
+    return (
+      <div className="bg-background border border-border rounded-lg shadow-lg p-3 text-sm">
+        <p className="font-bold mb-2 text-foreground">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <div key={`item-${index}`} className="flex justify-between gap-4 py-0.5" style={{ color: entry.color }}>
+            <span>{entry.name}</span>
+            <span className="font-medium">{formatCurrency(entry.value)}</span>
+          </div>
+        ))}
+        <div className={`flex justify-between gap-4 mt-2 pt-2 border-t border-border font-bold ${saldo >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
+          <span>Saldo</span>
+          <span>{formatCurrency(saldo)}</span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function Dashboard() {
   const { db } = useWallet();
   const transactions = useLiveQuery(() => db.transactions.toArray(), [db]);
@@ -271,9 +321,6 @@ export default function Dashboard() {
 
   const totalBalance = accountBalances.reduce((acc, curr) => acc + curr.currentBalance, 0);
 
-  const formatCurrency = (val: number) => 
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
@@ -394,7 +441,7 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
                 <XAxis dataKey="label" />
                 <YAxis tickFormatter={(val) => `R$ ${val}`} />
-                <Tooltip formatter={(val: any) => formatCurrency(val)} />
+                <Tooltip content={<CustomBarTooltip />} />
                 <Legend />
                 <Bar dataKey="Receitas" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} />
@@ -509,10 +556,7 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
                   <XAxis dataKey="label" />
                   <YAxis tickFormatter={(val) => `R$ ${val}`} />
-                  <Tooltip 
-                    formatter={(val: any) => formatCurrency(val)} 
-                    itemSorter={(item: any) => -(item.value || 0)}
-                  />
+                  <Tooltip content={<CustomLineTooltip />} />
                   <Legend />
                   {accounts?.filter(a => !a.isCreditCard).map((acc, index) => (
                     <Line 
