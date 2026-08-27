@@ -29,6 +29,7 @@ export interface Recurrence {
   description: string;
   amount: number;
   accountId: string;
+  destinationAccountId?: string;
   categoryId: string;
   subcategoryId: string;
   startDate: string;

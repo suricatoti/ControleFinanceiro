@@ -43,17 +43,48 @@ export async function ensureRecurrencesProjected(db: AppDatabase) {
         break; // We've reached the target date
       }
 
-      await db.transactions.add({
-        id: crypto.randomUUID(),
-        date: dStr,
-        accountId: recurrence.accountId,
-        categoryId: recurrence.categoryId,
-        subcategoryId: recurrence.subcategoryId,
-        description: recurrence.description,
-        amount: recurrence.amount,
-        recurringGroupId: recurrence.id,
-        status: 'Pendente'
-      });
+      if (recurrence.destinationAccountId) {
+        const id1 = crypto.randomUUID();
+        const id2 = crypto.randomUUID();
+
+        await db.transactions.add({
+          id: id1,
+          date: dStr,
+          accountId: recurrence.accountId,
+          categoryId: recurrence.categoryId,
+          subcategoryId: recurrence.subcategoryId,
+          description: recurrence.description,
+          amount: -Math.abs(recurrence.amount),
+          recurringGroupId: recurrence.id,
+          linkedTransactionId: id2,
+          status: 'Pendente'
+        });
+
+        await db.transactions.add({
+          id: id2,
+          date: dStr,
+          accountId: recurrence.destinationAccountId,
+          categoryId: recurrence.categoryId,
+          subcategoryId: recurrence.subcategoryId,
+          description: recurrence.description,
+          amount: Math.abs(recurrence.amount),
+          recurringGroupId: recurrence.id,
+          linkedTransactionId: id1,
+          status: 'Pendente'
+        });
+      } else {
+        await db.transactions.add({
+          id: crypto.randomUUID(),
+          date: dStr,
+          accountId: recurrence.accountId,
+          categoryId: recurrence.categoryId,
+          subcategoryId: recurrence.subcategoryId,
+          description: recurrence.description,
+          amount: recurrence.amount,
+          recurringGroupId: recurrence.id,
+          status: 'Pendente'
+        });
+      }
 
       if (recurrence.period === 'anual') {
         nextDate.setUTCFullYear(nextDate.getUTCFullYear() + 1);

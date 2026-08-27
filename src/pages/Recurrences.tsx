@@ -45,6 +45,7 @@ export default function Recurrences() {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [accountId, setAccountId] = useState("");
+  const [destinationAccountId, setDestinationAccountId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [period, setPeriod] = useState<"mensal" | "anual">("mensal");
@@ -56,6 +57,9 @@ export default function Recurrences() {
     const subcat = subcategories?.find(s => s.id === subcategoryId);
     if (!subcat) return;
     
+    const isTransfer = subcat.type === 'Transferência';
+    if (isTransfer && !destinationAccountId) return;
+    
     const parsedAmount = parseFloat(amount);
     // Assinaturas geralmente são despesas
     const finalAmount = subcat.type === 'Despesa' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount);
@@ -65,6 +69,7 @@ export default function Recurrences() {
         description,
         amount: finalAmount,
         accountId,
+        destinationAccountId: isTransfer ? destinationAccountId : undefined,
         categoryId: subcat.categoryId,
         subcategoryId,
         // startDate e period não são atualizados na edição
@@ -79,28 +84,19 @@ export default function Recurrences() {
 
       for (const tx of pendingTxs) {
         if (tx.status === 'Pendente') { // Could also check date >= now
-          await db.transactions.update(tx.id, {
-            amount: finalAmount,
-            description,
-            accountId,
-            categoryId: subcat.categoryId,
-            subcategoryId
-          });
+          await db.transactions.delete(tx.id);
         }
       }
+      
+      await ensureRecurrencesProjected(db);
     } else {
-      const todayString = new Date().toISOString().split("T")[0];
-      if (startDate < todayString) {
-        alert("Não é possível criar uma recorrência com data de início no passado.");
-        return;
-      }
-
       const newId = crypto.randomUUID();
       await db.recurrences.add({
         id: newId,
         description,
         amount: finalAmount,
         accountId,
+        destinationAccountId: isTransfer ? destinationAccountId : undefined,
         categoryId: subcat.categoryId,
         subcategoryId,
         startDate,
@@ -120,6 +116,7 @@ export default function Recurrences() {
     setDescription(r.description);
     setAmount(Math.abs(r.amount).toString());
     setAccountId(r.accountId);
+    setDestinationAccountId(r.destinationAccountId || "");
     setSubcategoryId(r.subcategoryId);
     setStartDate(r.startDate);
     setPeriod(r.period || "mensal");
@@ -146,6 +143,7 @@ export default function Recurrences() {
     setDescription("");
     setAmount("");
     setAccountId("");
+    setDestinationAccountId("");
     setSubcategoryId("");
     setStartDate(new Date().toISOString().split("T")[0]);
     setPeriod("mensal");
@@ -210,6 +208,9 @@ export default function Recurrences() {
     </Table>
   );
 
+  const selectedSubcat = subcategories?.find(s => s.id === subcategoryId);
+  const isTransfer = selectedSubcat?.type === 'Transferência';
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
@@ -271,7 +272,6 @@ export default function Recurrences() {
                 type="date" 
                 value={startDate} 
                 onChange={(e) => setStartDate(e.target.value)} 
-                min={!editingId ? new Date().toISOString().split("T")[0] : undefined}
                 disabled={!!editingId}
                 required 
               />
@@ -294,7 +294,7 @@ export default function Recurrences() {
             </div>
 
             <div className="space-y-2">
-              <Label>Conta Pagadora</Label>
+              <Label>{isTransfer ? "Conta de Origem" : "Conta Pagadora"}</Label>
               <Select value={accountId} onValueChange={setAccountId} required>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a conta..." />
@@ -306,6 +306,22 @@ export default function Recurrences() {
                 </SelectContent>
               </Select>
             </div>
+
+            {isTransfer && (
+              <div className="space-y-2">
+                <Label>Conta de Destino</Label>
+                <Select value={destinationAccountId} onValueChange={setDestinationAccountId} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a conta de destino..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts?.filter(acc => acc.id !== accountId).map(acc => (
+                      <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Categoria / Subcategoria</Label>
