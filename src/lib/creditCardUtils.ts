@@ -11,8 +11,12 @@ export function getCreditCardBillPeriod(monthStr: string, closingDay: number, du
   const closingMonth = month - 1;
   const closingYear = year;
   
+  // Quantidade de dias no mês de fechamento (ex: Setembro = 30, Outubro = 31)
+  const daysInClosingMonth = new Date(closingYear, closingMonth + 1, 0).getDate();
+  const actualClosingDay = Math.min(closingDay, daysInClosingMonth);
+  
   // A fatura atual FECHA em:
-  const endDate = new Date(closingYear, closingMonth, closingDay, 23, 59, 59, 999);
+  const endDate = new Date(closingYear, closingMonth, actualClosingDay, 23, 59, 59, 999);
   
   // Calcula o vencimento
   let dueMonth = closingMonth;
@@ -27,7 +31,9 @@ export function getCreditCardBillPeriod(monthStr: string, closingDay: number, du
     }
   }
   
-  const dueDate = new Date(dueYear, dueMonth, dueDay, 23, 59, 59, 999);
+  const daysInDueMonth = new Date(dueYear, dueMonth + 1, 0).getDate();
+  const actualDueDay = Math.min(dueDay, daysInDueMonth);
+  const dueDate = new Date(dueYear, dueMonth, actualDueDay, 23, 59, 59, 999);
   
   // A fatura atual ABRE no dia seguinte ao fechamento anterior:
   let prevClosingMonth = closingMonth - 1;
@@ -36,7 +42,16 @@ export function getCreditCardBillPeriod(monthStr: string, closingDay: number, du
     prevClosingMonth = 11;
     prevClosingYear -= 1;
   }
-  const startDate = new Date(prevClosingYear, prevClosingMonth, closingDay + 1, 0, 0, 0, 0);
+  
+  const daysInPrevMonth = new Date(prevClosingYear, prevClosingMonth + 1, 0).getDate();
+  const actualPrevClosingDay = Math.min(closingDay, daysInPrevMonth);
+  
+  let startDate: Date;
+  if (actualPrevClosingDay >= daysInPrevMonth) {
+    startDate = new Date(closingYear, closingMonth, 1, 0, 0, 0, 0);
+  } else {
+    startDate = new Date(prevClosingYear, prevClosingMonth, actualPrevClosingDay + 1, 0, 0, 0, 0);
+  }
 
   return {
     startDate,

@@ -25,20 +25,34 @@ export async function ensureRecurrencesProjected(db: AppDatabase) {
       .sortBy("date")
       .then(txs => txs[0]);
 
-    let nextDate = new Date(recurrence.startDate + "T12:00:00Z");
+    const [origY, origM, origD] = recurrence.startDate.split('-').map(Number);
+    let step = 0;
 
     if (latestTx) {
-      nextDate = new Date(latestTx.date + "T12:00:00Z");
-      // Advance by 1 period since this transaction already exists
+      const [latestY, latestM] = latestTx.date.split('-').map(Number);
       if (recurrence.period === 'anual') {
-        nextDate.setUTCFullYear(nextDate.getUTCFullYear() + 1);
+        step = (latestY - origY) + 1;
       } else {
-        nextDate.setUTCMonth(nextDate.getUTCMonth() + 1);
+        step = (latestY - origY) * 12 + (latestM - origM) + 1;
       }
     }
 
     while (true) {
-      const dStr = nextDate.toISOString().split("T")[0];
+      let dStr = "";
+      if (recurrence.period === 'anual') {
+        const targetY = origY + step;
+        const maxDays = new Date(targetY, origM, 0).getDate();
+        const actualD = Math.min(origD, maxDays);
+        dStr = `${targetY}-${String(origM).padStart(2, '0')}-${String(actualD).padStart(2, '0')}`;
+      } else {
+        const totalMonths = (origM - 1) + step;
+        const targetY = origY + Math.floor(totalMonths / 12);
+        const targetM = ((totalMonths % 12) + 12) % 12; // 0-11
+        const maxDays = new Date(targetY, targetM + 1, 0).getDate();
+        const actualD = Math.min(origD, maxDays);
+        dStr = `${targetY}-${String(targetM + 1).padStart(2, '0')}-${String(actualD).padStart(2, '0')}`;
+      }
+
       if (dStr > targetDateStr) {
         break; // We've reached the target date
       }
@@ -86,11 +100,7 @@ export async function ensureRecurrencesProjected(db: AppDatabase) {
         });
       }
 
-      if (recurrence.period === 'anual') {
-        nextDate.setUTCFullYear(nextDate.getUTCFullYear() + 1);
-      } else {
-        nextDate.setUTCMonth(nextDate.getUTCMonth() + 1);
-      }
+      step++;
     }
   }
 }

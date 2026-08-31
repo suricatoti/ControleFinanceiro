@@ -64,14 +64,13 @@ export default function Transactions() {
   const [moverTransaction, setMoverTransaction] = useState<any | null>(null);
   const [moverMonthStr, setMoverMonthStr] = useState("");
 
-  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
 
   const navigateMonth = (direction: number) => {
-    setCurrentDate(prev => {
-      const d = new Date(prev);
-      d.setMonth(d.getMonth() + direction);
-      return d;
-    });
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + direction, 1));
   };
 
   const selectedSubcat = subcategories?.find(s => s.id === subcategoryId);
@@ -104,20 +103,25 @@ export default function Transactions() {
 
     const newlyAddedIds: string[] = [];
 
+    const [origYear, origMonth, origDay] = date.split('-').map(Number);
+
     for (let i = 1; i <= parsedInstallments; i++) {
       const currentAmount = i === 1 ? installmentBaseValue + remainder : installmentBaseValue;
       
       const currentDesc = parsedInstallments > 1 ? `${description} - Parcela ${i} de ${parsedInstallments}` : description;
       
       // Ajusta a data para a parcela atual (mantendo o dia ou indo para o fim do mês se o dia não existir no mês futuro)
-      const d = new Date(date + "T12:00:00Z"); // Fixa ao meio-dia para evitar problemas de fuso horário
-      d.setUTCMonth(d.getUTCMonth() + (i - 1));
-      const currentDate = d.toISOString().split("T")[0];
+      const targetMonthIndex = (origMonth - 1) + (i - 1);
+      const targetYear = origYear + Math.floor(targetMonthIndex / 12);
+      const targetMonth = ((targetMonthIndex % 12) + 12) % 12; // 0-11
+      const maxDaysInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+      const actualDay = Math.min(origDay, maxDaysInTargetMonth);
+      const installmentDateStr = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(actualDay).padStart(2, '0')}`;
       
       let txStatus: 'Pendente' | 'Paga' = isPending ? 'Pendente' : 'Paga';
       if (i > 1 && !isPending) {
          const todayString = new Date().toISOString().split("T")[0];
-         const isFuture = new Date(currentDate).getTime() > new Date(todayString).getTime();
+         const isFuture = new Date(installmentDateStr + "T12:00:00Z").getTime() > new Date(todayString + "T12:00:00Z").getTime();
          if (isFuture) txStatus = 'Pendente';
       }
       
@@ -131,7 +135,7 @@ export default function Transactions() {
             
             if (originTx && destTx) {
               await db.transactions.update(originTx.id, {
-                date: currentDate,
+                date: installmentDateStr,
                 accountId: accountId,
                 categoryId,
                 subcategoryId,
@@ -141,7 +145,7 @@ export default function Transactions() {
               });
               
               await db.transactions.update(destTx.id, {
-                date: currentDate,
+                date: installmentDateStr,
                 accountId: destinationAccountId,
                 categoryId,
                 subcategoryId,
@@ -161,7 +165,7 @@ export default function Transactions() {
           // Saída (Origem)
         await db.transactions.add({
           id: id1,
-          date: currentDate,
+          date: installmentDateStr,
           accountId,
           categoryId,
           subcategoryId,
@@ -174,7 +178,7 @@ export default function Transactions() {
         // Entrada (Destino)
         await db.transactions.add({
           id: id2,
-          date: currentDate,
+          date: installmentDateStr,
           accountId: destinationAccountId,
           categoryId,
           subcategoryId,
@@ -194,7 +198,7 @@ export default function Transactions() {
 
         if (editingTransactionId && parsedInstallments === 1) {
           await db.transactions.update(editingTransactionId, {
-            date: currentDate,
+            date: installmentDateStr,
             accountId,
             categoryId,
             subcategoryId,
@@ -208,7 +212,7 @@ export default function Transactions() {
           newlyAddedIds.push(newId);
           await db.transactions.add({
             id: newId,
-            date: currentDate,
+            date: installmentDateStr,
             accountId,
             categoryId,
             subcategoryId,

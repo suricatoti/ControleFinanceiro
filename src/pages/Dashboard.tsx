@@ -77,16 +77,15 @@ export default function Dashboard() {
   const subcategories = useLiveQuery(() => db.subcategories.toArray(), [db]);
   const accounts = useLiveQuery(() => db.accounts.toArray(), [db]);
 
-  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
   const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
   const [futureYear, setFutureYear] = useState(() => new Date().getFullYear());
   
   const navigateMonth = (direction: number) => {
-    setCurrentMonth(prev => {
-      const d = new Date(prev);
-      d.setMonth(d.getMonth() + direction);
-      return d;
-    });
+    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + direction, 1));
   };
   
   const [showSubcategoriesExpense, setShowSubcategoriesExpense] = useState(false);
