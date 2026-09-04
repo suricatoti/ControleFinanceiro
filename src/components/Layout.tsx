@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +43,7 @@ export function Layout() {
   const [newWalletName, setNewWalletName] = useState("");
   const [isRenameWalletOpen, setIsRenameWalletOpen] = useState(false);
   const [renameWalletName, setRenameWalletName] = useState("");
+  const [isDeleteWalletOpen, setIsDeleteWalletOpen] = useState(false);
 
   const handleCreateWallet = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,9 +64,7 @@ export function Layout() {
 
   const handleDeleteWallet = () => {
     if (activeWalletId === 'default') return;
-    if (window.confirm(`Tem certeza que deseja excluir permanentemente a carteira "${activeWallet?.name}" e todos os seus dados?`)) {
-      deleteWallet(activeWalletId);
-    }
+    deleteWallet(activeWalletId);
   };
 
   const links = [
@@ -121,7 +121,7 @@ export function Layout() {
                   variant="ghost" 
                   size="icon" 
                   className="h-8 w-8 text-red-400 hover:text-red-500 hover:bg-red-500/10"
-                  onClick={handleDeleteWallet}
+                  onClick={() => setIsDeleteWalletOpen(true)}
                   title="Excluir Carteira"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -210,6 +210,23 @@ export function Layout() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={isDeleteWalletOpen}
+        onOpenChange={setIsDeleteWalletOpen}
+        title="Excluir Carteira"
+        description={
+          <span>
+            Tem certeza que deseja excluir permanentemente a carteira{" "}
+            <strong className="text-foreground">{activeWallet?.name}</strong>?
+            <span className="block mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium">
+              ⚠️ Todos os lançamentos, contas e configurações associadas a esta carteira serão apagados permanentemente.
+            </span>
+          </span>
+        }
+        confirmText="Excluir Carteira"
+        onConfirm={handleDeleteWallet}
+      />
     </div>
   );
 }

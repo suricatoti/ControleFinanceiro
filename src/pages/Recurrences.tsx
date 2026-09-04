@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Plus } from "lucide-react";
 import {
   Select,
@@ -41,6 +42,9 @@ export default function Recurrences() {
 
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  const [deleteRecurrence, setDeleteRecurrence] = useState<any | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -123,12 +127,18 @@ export default function Recurrences() {
     setIsOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    await db.recurrences.delete(id);
+  const openDeleteConfirm = (r: any) => {
+    setDeleteRecurrence(r);
+    setIsDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteRecurrence) return;
+    await db.recurrences.delete(deleteRecurrence.id);
     // Delete all pending future transactions
     const pendingTxs = await db.transactions
       .where('recurringGroupId')
-      .equals(id)
+      .equals(deleteRecurrence.id)
       .toArray();
       
     for (const tx of pendingTxs) {
@@ -136,6 +146,7 @@ export default function Recurrences() {
         await db.transactions.delete(tx.id);
       }
     }
+    setDeleteRecurrence(null);
   };
 
   const resetForm = () => {
@@ -191,7 +202,7 @@ export default function Recurrences() {
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" size="sm" onClick={() => handleEdit(r)}>Editar</Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(r.id)}>Excluir</Button>
+                  <Button variant="destructive" size="sm" onClick={() => openDeleteConfirm(r)}>Excluir</Button>
                 </div>
               </TableCell>
             </TableRow>
@@ -358,6 +369,25 @@ export default function Recurrences() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        title="Excluir Recorrência"
+        description={
+          deleteRecurrence ? (
+            <span>
+              Tem certeza que deseja excluir a recorrência{" "}
+              <strong className="text-foreground">{deleteRecurrence.description || "sem descrição"}</strong>?
+              <span className="block mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                ⚠️ Todos os lançamentos futuros pendentes gerados por esta recorrência também serão excluídos automaticamente.
+              </span>
+            </span>
+          ) : ""
+        }
+        confirmText="Excluir"
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

@@ -30,6 +30,7 @@ import {
   DialogTitle,
 
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Plus, ChevronLeft, ChevronRight, CheckCircle2, Circle } from "lucide-react";
 
 export default function Transactions() {
@@ -41,6 +42,9 @@ export default function Transactions() {
 
   const [isOpen, setIsOpen] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
+  
+  const [deleteTransaction, setDeleteTransaction] = useState<any | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   
   const [lastAddedTransactionIds, setLastAddedTransactionIds] = useState<string[]>([]);
   const [showUndo, setShowUndo] = useState(false);
@@ -307,11 +311,18 @@ export default function Transactions() {
     setBaixaTransaction(null);
   };
 
-  const handleDelete = async (t: any) => {
-    if (t.linkedTransactionId) {
-      await db.transactions.delete(t.linkedTransactionId);
+  const openDeleteConfirm = (t: any) => {
+    setDeleteTransaction(t);
+    setIsDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTransaction) return;
+    if (deleteTransaction.linkedTransactionId) {
+      await db.transactions.delete(deleteTransaction.linkedTransactionId);
     }
-    await db.transactions.delete(t.id);
+    await db.transactions.delete(deleteTransaction.id);
+    setDeleteTransaction(null);
   };
 
   const toggleReconciled = async (t: any) => {
@@ -757,7 +768,7 @@ export default function Transactions() {
                           {acc.isCreditCard && (
                             <Button variant="secondary" size="sm" onClick={() => openMover(t)}>Mover</Button>
                           )}
-                          <Button variant="destructive" size="sm" onClick={() => handleDelete(t)}>Excluir</Button>
+                          <Button variant="destructive" size="sm" onClick={() => openDeleteConfirm(t)}>Excluir</Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -784,6 +795,30 @@ export default function Transactions() {
           </div>
         );
       })}
+
+      <ConfirmDialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        title="Excluir Lançamento"
+        description={
+          deleteTransaction ? (
+            <span>
+              Tem certeza que deseja excluir o lançamento{" "}
+              <strong className="text-foreground">{deleteTransaction.description || "sem descrição"}</strong> no valor de{" "}
+              <strong className="text-foreground">
+                {formatCurrency(Math.abs(deleteTransaction.amount))}
+              </strong>?
+              {deleteTransaction.linkedTransactionId && (
+                <span className="block mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                  ⚠️ Atenção: Por se tratar de uma transferência, o lançamento vinculado na conta de destino também será excluído.
+                </span>
+              )}
+            </span>
+          ) : ""
+        }
+        confirmText="Excluir"
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

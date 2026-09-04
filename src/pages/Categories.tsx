@@ -21,12 +21,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 export default function Categories() {
   const { db } = useWallet();
   const accounts = useLiveQuery(() => db.accounts.orderBy('name').toArray(), [db]);
   const categories = useLiveQuery(() => db.categories.orderBy('name').toArray(), [db]);
   const subcategories = useLiveQuery(() => db.subcategories.orderBy('name').toArray(), [db]);
+
+  const [deleteItem, setDeleteItem] = useState<{
+    type: 'account' | 'category' | 'subcategory';
+    id: string;
+    name: string;
+  } | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const sortedSubcategories = useMemo(() => {
     if (!subcategories || !categories) return [];
@@ -113,12 +121,31 @@ export default function Categories() {
     setCatName("");
   };
 
-  const handleDeleteAccount = async (id: string) => {
-    await db.accounts.delete(id);
+  const openDeleteAccount = (acc: any) => {
+    setDeleteItem({ type: 'account', id: acc.id, name: acc.name });
+    setIsDeleteOpen(true);
   };
 
-  const handleDeleteCategory = async (id: string) => {
-    await db.categories.delete(id);
+  const openDeleteCategory = (cat: any) => {
+    setDeleteItem({ type: 'category', id: cat.id, name: cat.name });
+    setIsDeleteOpen(true);
+  };
+
+  const openDeleteSubcategory = (subcat: any) => {
+    setDeleteItem({ type: 'subcategory', id: subcat.id, name: subcat.name });
+    setIsDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteItem) return;
+    if (deleteItem.type === 'account') {
+      await db.accounts.delete(deleteItem.id);
+    } else if (deleteItem.type === 'category') {
+      await db.categories.delete(deleteItem.id);
+    } else if (deleteItem.type === 'subcategory') {
+      await db.subcategories.delete(deleteItem.id);
+    }
+    setDeleteItem(null);
   };
 
   const handleAddSubcategory = async (e: React.FormEvent) => {
@@ -166,10 +193,6 @@ export default function Categories() {
     setSubCatType("");
     setSubCatFreq("");
     setSubCatNature("");
-  };
-
-  const handleDeleteSubcategory = async (id: string) => {
-    await db.subcategories.delete(id);
   };
 
   const handleEditAccount = (acc: any) => {
@@ -334,7 +357,7 @@ export default function Categories() {
                             <Button variant="outline" size="sm" onClick={() => handleEditAccount(acc)}>
                               Editar
                             </Button>
-                            <Button variant="destructive" size="sm" onClick={() => handleDeleteAccount(acc.id)}>
+                            <Button variant="destructive" size="sm" onClick={() => openDeleteAccount(acc)}>
                               Excluir
                             </Button>
                           </div>
@@ -405,7 +428,7 @@ export default function Categories() {
                             <Button 
                               variant="destructive" 
                               size="sm" 
-                              onClick={() => handleDeleteCategory(cat.id)}
+                              onClick={() => openDeleteCategory(cat)}
                               disabled={cat.name.toLowerCase().includes("transferência")}
                             >
                               Excluir
@@ -544,7 +567,7 @@ export default function Categories() {
                             <Button 
                               variant="destructive" 
                               size="sm" 
-                              onClick={() => handleDeleteSubcategory(subcat.id)}
+                              onClick={() => openDeleteSubcategory(subcat)}
                               disabled={subcat.type === 'Transferência'}
                             >
                               Excluir
@@ -567,6 +590,39 @@ export default function Categories() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <ConfirmDialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        title={
+          deleteItem?.type === 'account'
+            ? "Excluir Conta"
+            : deleteItem?.type === 'category'
+            ? "Excluir Categoria"
+            : "Excluir Subcategoria"
+        }
+        description={
+          deleteItem ? (
+            <span>
+              Tem certeza que deseja excluir{" "}
+              {deleteItem.type === 'account' ? "a conta" : deleteItem.type === 'category' ? "a categoria" : "a subcategoria"}{" "}
+              <strong className="text-foreground">{deleteItem.name}</strong>?
+              {deleteItem.type === 'account' && (
+                <span className="block mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                  ⚠️ Atenção: Os lançamentos cadastrados nesta conta permanecerão no histórico, mas ficarão sem o vínculo da conta.
+                </span>
+              )}
+              {deleteItem.type === 'category' && (
+                <span className="block mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                  ⚠️ Atenção: As subcategorias vinculadas a esta categoria perderão a referência de categoria pai.
+                </span>
+              )}
+            </span>
+          ) : ""
+        }
+        confirmText="Excluir"
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }
