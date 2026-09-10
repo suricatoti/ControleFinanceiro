@@ -46,9 +46,21 @@ export interface Transaction {
   amount: number;
   linkedTransactionId?: string;
   recurringGroupId?: string;
+  installmentGroupId?: string;
+  installmentNumber?: number;
+  installmentTotal?: number;
   status?: 'Pendente' | 'Paga';
   creditCardBillDate?: string;
   reconciled?: boolean;
+}
+
+export interface CardBillPeriod {
+  id: string; // `${accountId}_${monthStr}`
+  accountId: string;
+  monthStr: string; // "YYYY-MM"
+  startDate: string; // "YYYY-MM-DD"
+  endDate: string; // "YYYY-MM-DD" (data de fechamento)
+  dueDate: string; // "YYYY-MM-DD" (data de vencimento)
 }
 
 export class AppDatabase extends Dexie {
@@ -57,6 +69,7 @@ export class AppDatabase extends Dexie {
   subcategories!: EntityTable<Subcategory, 'id'>;
   transactions!: EntityTable<Transaction, 'id'>;
   recurrences!: EntityTable<Recurrence, 'id'>;
+  cardBillPeriods!: EntityTable<CardBillPeriod, 'id'>;
 
   constructor(dbName: string) {
     super(dbName);
@@ -99,6 +112,14 @@ export class AppDatabase extends Dexie {
 
     this.version(6).stores({
       transactions: 'id, date, accountId, categoryId, subcategoryId, recurringGroupId, status, creditCardBillDate'
+    });
+
+    this.version(7).stores({
+      cardBillPeriods: 'id, accountId, monthStr, [accountId+monthStr]'
+    });
+
+    this.version(8).stores({
+      transactions: 'id, date, accountId, categoryId, subcategoryId, recurringGroupId, installmentGroupId, status, creditCardBillDate'
     });
   }
 }

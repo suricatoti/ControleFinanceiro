@@ -76,6 +76,7 @@ export default function Dashboard() {
   const categories = useLiveQuery(() => db.categories.toArray(), [db]);
   const subcategories = useLiveQuery(() => db.subcategories.toArray(), [db]);
   const accounts = useLiveQuery(() => db.accounts.toArray(), [db]);
+  const cardBillPeriods = useLiveQuery(() => db.cardBillPeriods?.toArray() || [], [db]);
 
   const [currentMonth, setCurrentMonth] = useState(() => {
     const d = new Date();
@@ -111,7 +112,7 @@ export default function Dashboard() {
       let effectiveDateStr = t.date;
       
       if (acc?.isCreditCard && acc.closingDay && acc.dueDay) {
-          const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay);
+          const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay, cardBillPeriods, acc.id);
           const [y, m] = billMonth.split('-').map(Number);
           
           // O mês efetivo da despesa será o mês da fatura (mês de fechamento).
@@ -131,7 +132,7 @@ export default function Dashboard() {
     }, [] as any[]) || [];
 
     return { filteredTransactions: filtered, startTimestamp: st, endTimestamp: et };
-  }, [transactions, currentMonth, accounts, includeCreditCards, includePending]);
+  }, [transactions, currentMonth, accounts, cardBillPeriods, includeCreditCards, includePending]);
 
   // 1. Prepara dados do Gráfico de Barras (Receitas vs Despesas por mês)
   const barChartData = useMemo(() => {
@@ -150,7 +151,7 @@ export default function Dashboard() {
       let effectiveTime = new Date(t.date + "T12:00:00").getTime();
       
       if (acc?.isCreditCard && acc.closingDay && acc.dueDay) {
-          const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay);
+          const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay, cardBillPeriods, acc.id);
           const [y, m] = billMonth.split('-').map(Number);
           effectiveTime = new Date(y, m - 1, 1, 12, 0, 0).getTime();
       }
@@ -173,7 +174,7 @@ export default function Dashboard() {
     });
 
     return Object.values(dataObj).sort((a, b) => a.label.localeCompare(b.label));
-  }, [transactions, currentYear, subcategories, accounts, includeCreditCards, includePending]);
+  }, [transactions, currentYear, subcategories, accounts, cardBillPeriods, includeCreditCards, includePending]);
 
   // 2. Prepara dados dos Gráficos de Rosca (Receitas e Despesas por Categoria/Subcategoria)
   const { pieIncome, pieExpense } = useMemo(() => {
@@ -214,7 +215,7 @@ export default function Dashboard() {
         percentage: ((expenseMap[name] / totalExpense) * 100).toFixed(1) + '%'
       }))
     };
-  }, [filteredTransactions, categories, subcategories, showSubcategoriesExpense]);
+  }, [filteredTransactions, categories, subcategories, accounts, showSubcategoriesExpense]);
 
   // 3. Prepara os saldos das contas (soma de todas as transações até o mês selecionado)
   const accountBalances = useMemo(() => {
@@ -229,7 +230,7 @@ export default function Dashboard() {
         if (t.accountId === acc.id && (t.status !== 'Pendente' || includePending)) {
           if (acc.isCreditCard && acc.closingDay && acc.dueDay) {
             // Cartão de crédito: saldo é apenas a soma da fatura atual (assumindo que anteriores foram pagas)
-            const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay);
+            const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay, cardBillPeriods, acc.id);
             if (billMonth === targetMonthStr) {
               balance += t.amount;
             }
@@ -245,7 +246,7 @@ export default function Dashboard() {
 
       return { ...acc, currentBalance: balance };
     });
-  }, [accounts, transactions, endTimestamp, currentMonth, includePending]);
+  }, [accounts, transactions, endTimestamp, currentMonth, cardBillPeriods, includePending]);
 
   const pendingTransactions = useMemo(() => {
     if (!transactions) return [];

@@ -3,6 +3,7 @@ import { NumericFormat } from "react-number-format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useWallet } from "@/contexts/WalletContext";
 import { getCreditCardBillPeriod, getNaturalBillMonth } from "@/lib/creditCardUtils";
+import { getInstallmentInfo, findFuturePendingInstallments, calculateFutureInstallmentDate, type InstallmentInfo } from "@/lib/installmentUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +32,7 @@ import {
 
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Plus, ChevronLeft, ChevronRight, CheckCircle2, Circle } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, CheckCircle2, Circle, CalendarDays } from "lucide-react";
 
 export default function Transactions() {
   const { db } = useWallet();
@@ -39,9 +40,11 @@ export default function Transactions() {
   const categories = useLiveQuery(() => db.categories.orderBy('name').toArray(), [db]);
   const subcategories = useLiveQuery(() => db.subcategories.orderBy('name').toArray(), [db]);
   const transactions = useLiveQuery(() => db.transactions.toArray(), [db]);
+  const cardBillPeriods = useLiveQuery(() => db.cardBillPeriods?.toArray() || [], [db]);
 
   const [isOpen, setIsOpen] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
+  const [editingInstallmentInfo, setEditingInstallmentInfo] = useState<InstallmentInfo | null>(null);
   
   const [deleteTransaction, setDeleteTransaction] = useState<any | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -67,6 +70,13 @@ export default function Transactions() {
   const [isMoverOpen, setIsMoverOpen] = useState(false);
   const [moverTransaction, setMoverTransaction] = useState<any | null>(null);
   const [moverMonthStr, setMoverMonthStr] = useState("");
+
+  const [isBillPeriodModalOpen, setIsBillPeriodModalOpen] = useState(false);
+  const [editingPeriodAccount, setEditingPeriodAccount] = useState<any | null>(null);
+  const [periodStartDate, setPeriodStartDate] = useState("");
+  const [periodEndDate, setPeriodEndDate] = useState("");
+  const [periodDueDate, setPeriodDueDate] = useState("");
+  const [isPeriodCustom, setIsPeriodCustom] = useState(false);
 
   const [currentDate, setCurrentDate] = useState(() => {
     const d = new Date();
@@ -98,23 +108,168 @@ export default function Transactions() {
 
     const categoryId = subcat.categoryId;
     const parsedInstallments = Math.max(1, parseInt(String(installments)) || 1);
-    const totalAmount = parseFloat(amount);
-    
-    // Calcula o valor base da parcela e o resto para a primeira parcela (Opção 2)
-    // Usando Number.EPSILON para evitar erros de precisão do JS
+    const parsedAmount = parseFloat(amount);
+
+    // MODO EDIÇÃO: Atualiza a transação selecionada (e suas parcelas futuras se for compra parcelada)
+    if (editingTransactionId) {
+      const currentTx = await db.transactions.get(editingTransactionId);
+      if (!currentTx) return;
+
+      const info = editingInstallmentInfo || getInstallmentInfo(currentTx);
+      const rawDesc = description.replace(/\s*-\s*Parcela\s+\d+\s+de\s+\d+$/i, '').trim();
+      const currentDesc = info.isInstallment ? `${rawDesc} - Parcela ${info.currentNumber} de ${info.totalNumber}` : description;
+
+      let finalAmount = parsedAmount;
+      if (subcat.type === 'Despesa') {
+        finalAmount = -Math.abs(finalAmount);
+      } else {
+        finalAmount = Math.abs(finalAmount);
+      }
+
+      const txStatus: 'Pendente' | 'Paga' = isPending ? 'Pendente' : 'Paga';
+      const sharedGroupId = currentTx.installmentGroupId || (info.isInstallment ? (info.groupId || currentTx.id) : undefined);
+
+      if (isTransfer) {
+        if (currentTx.linkedTransactionId) {
+          const pair = await db.transactions.where('id').anyOf([currentTx.id, currentTx.linkedTransactionId]).toArray();
+          const originTx = pair.find(p => p.amount < 0) || currentTx;
+          const destTx = pair.find(p => p.amount > 0) || pair.find(p => p.id === currentTx.linkedTransactionId);
+
+          if (originTx) {
+            await db.transactions.update(originTx.id, {
+              date,
+              accountId,
+              categoryId,
+              subcategoryId,
+              description: currentDesc,
+              amount: -Math.abs(parsedAmount),
+              status: txStatus,
+              ...(info.isInstallment ? {
+                installmentGroupId: sharedGroupId,
+                installmentNumber: info.currentNumber,
+                installmentTotal: info.totalNumber
+              } : {})
+            });
+          }
+
+          if (destTx) {
+            await db.transactions.update(destTx.id, {
+              date,
+              accountId: destinationAccountId,
+              categoryId,
+              subcategoryId,
+              description: currentDesc,
+              amount: Math.abs(parsedAmount),
+              status: txStatus,
+              ...(info.isInstallment ? {
+                installmentGroupId: sharedGroupId,
+                installmentNumber: info.currentNumber,
+                installmentTotal: info.totalNumber
+              } : {})
+            });
+          }
+        }
+      } else {
+        await db.transactions.update(currentTx.id, {
+          date,
+          accountId,
+          categoryId,
+          subcategoryId,
+          description: currentDesc,
+          amount: finalAmount,
+          status: txStatus,
+          ...(info.isInstallment ? {
+            installmentGroupId: sharedGroupId,
+            installmentNumber: info.currentNumber,
+            installmentTotal: info.totalNumber
+          } : {})
+        });
+      }
+
+      // Se for compra parcelada, atualizar também as parcelas futuras que ainda não foram baixadas (status !== 'Paga')
+      if (info.isInstallment) {
+        const allTxs = await db.transactions.toArray();
+        const futurePending = findFuturePendingInstallments(currentTx, allTxs);
+
+        for (const fTx of futurePending) {
+          const fInfo = getInstallmentInfo(fTx);
+          const fDesc = `${rawDesc} - Parcela ${fInfo.currentNumber} de ${fInfo.totalNumber}`;
+          const fDateStr = calculateFutureInstallmentDate(date, info.currentNumber, fInfo.currentNumber);
+
+          if (isTransfer || fTx.linkedTransactionId) {
+            const pair = await db.transactions.where('id').anyOf([fTx.id, fTx.linkedTransactionId || '']).toArray();
+            const originTx = pair.find(p => p.amount < 0) || fTx;
+            const destTx = pair.find(p => p.amount > 0);
+
+            if (originTx) {
+              await db.transactions.update(originTx.id, {
+                date: fDateStr,
+                accountId,
+                categoryId,
+                subcategoryId,
+                description: fDesc,
+                amount: -Math.abs(parsedAmount),
+                installmentGroupId: sharedGroupId,
+                installmentNumber: fInfo.currentNumber,
+                installmentTotal: fInfo.totalNumber
+              });
+            }
+
+            if (destTx) {
+              await db.transactions.update(destTx.id, {
+                date: fDateStr,
+                accountId: destinationAccountId,
+                categoryId,
+                subcategoryId,
+                description: fDesc,
+                amount: Math.abs(parsedAmount),
+                installmentGroupId: sharedGroupId,
+                installmentNumber: fInfo.currentNumber,
+                installmentTotal: fInfo.totalNumber
+              });
+            }
+          } else {
+            await db.transactions.update(fTx.id, {
+              date: fDateStr,
+              accountId,
+              categoryId,
+              subcategoryId,
+              description: fDesc,
+              amount: finalAmount,
+              installmentGroupId: sharedGroupId,
+              installmentNumber: fInfo.currentNumber,
+              installmentTotal: fInfo.totalNumber
+            });
+          }
+        }
+      }
+
+      setEditingTransactionId(null);
+      setEditingInstallmentInfo(null);
+      setIsOpen(false);
+      setDate(new Date().toISOString().split("T")[0]);
+      setAccountId("");
+      setDestinationAccountId("");
+      setSubcategoryId("");
+      setDescription("");
+      setAmount("");
+      setInstallments(1);
+      return;
+    }
+
+    // MODO CRIAÇÃO (Nova transação com suporte a parcelas e geração de installmentGroupId)
+    const totalAmount = parsedAmount;
     const installmentBaseValue = Math.floor((totalAmount / parsedInstallments) * 100 + Number.EPSILON) / 100;
     const remainder = parseFloat((totalAmount - (installmentBaseValue * parsedInstallments)).toFixed(2));
 
     const newlyAddedIds: string[] = [];
-
     const [origYear, origMonth, origDay] = date.split('-').map(Number);
+    const installmentGroupId = parsedInstallments > 1 ? crypto.randomUUID() : undefined;
 
     for (let i = 1; i <= parsedInstallments; i++) {
       const currentAmount = i === 1 ? installmentBaseValue + remainder : installmentBaseValue;
-      
       const currentDesc = parsedInstallments > 1 ? `${description} - Parcela ${i} de ${parsedInstallments}` : description;
       
-      // Ajusta a data para a parcela atual (mantendo o dia ou indo para o fim do mês se o dia não existir no mês futuro)
       const targetMonthIndex = (origMonth - 1) + (i - 1);
       const targetYear = origYear + Math.floor(targetMonthIndex / 12);
       const targetMonth = ((targetMonthIndex % 12) + 12) % 12; // 0-11
@@ -128,45 +283,13 @@ export default function Transactions() {
          const isFuture = new Date(installmentDateStr + "T12:00:00Z").getTime() > new Date(todayString + "T12:00:00Z").getTime();
          if (isFuture) txStatus = 'Pendente';
       }
-      
+
       if (isTransfer) {
-        if (editingTransactionId) {
-          const oldTx = await db.transactions.get(editingTransactionId);
-          if (oldTx && oldTx.linkedTransactionId) {
-            const pair = await db.transactions.where('id').anyOf([oldTx.id, oldTx.linkedTransactionId]).toArray();
-            const originTx = pair.find(p => p.amount < 0);
-            const destTx = pair.find(p => p.amount > 0);
-            
-            if (originTx && destTx) {
-              await db.transactions.update(originTx.id, {
-                date: installmentDateStr,
-                accountId: accountId,
-                categoryId,
-                subcategoryId,
-                description: currentDesc,
-                amount: -Math.abs(currentAmount),
-                status: txStatus
-              });
-              
-              await db.transactions.update(destTx.id, {
-                date: installmentDateStr,
-                accountId: destinationAccountId,
-                categoryId,
-                subcategoryId,
-                description: currentDesc,
-                amount: Math.abs(currentAmount),
-                status: txStatus
-              });
-            }
-          }
-          if (i === parsedInstallments) setEditingTransactionId(null);
-        } else {
-          const id1 = crypto.randomUUID();
-          const id2 = crypto.randomUUID();
-          
-          newlyAddedIds.push(id1, id2);
-          
-          // Saída (Origem)
+        const id1 = crypto.randomUUID();
+        const id2 = crypto.randomUUID();
+        newlyAddedIds.push(id1, id2);
+
+        // Saída (Origem)
         await db.transactions.add({
           id: id1,
           date: installmentDateStr,
@@ -177,6 +300,9 @@ export default function Transactions() {
           amount: -Math.abs(currentAmount),
           linkedTransactionId: id2,
           status: txStatus,
+          installmentGroupId,
+          installmentNumber: parsedInstallments > 1 ? i : undefined,
+          installmentTotal: parsedInstallments > 1 ? parsedInstallments : undefined,
         });
 
         // Entrada (Destino)
@@ -190,8 +316,10 @@ export default function Transactions() {
           amount: Math.abs(currentAmount),
           linkedTransactionId: id1,
           status: txStatus,
+          installmentGroupId,
+          installmentNumber: parsedInstallments > 1 ? i : undefined,
+          installmentTotal: parsedInstallments > 1 ? parsedInstallments : undefined,
         });
-        }
       } else {
         let finalAmount = currentAmount;
         if (subcat.type === 'Despesa') {
@@ -200,31 +328,21 @@ export default function Transactions() {
           finalAmount = Math.abs(finalAmount);
         }
 
-        if (editingTransactionId && parsedInstallments === 1) {
-          await db.transactions.update(editingTransactionId, {
-            date: installmentDateStr,
-            accountId,
-            categoryId,
-            subcategoryId,
-            description: currentDesc,
-            amount: finalAmount,
-            status: txStatus,
-          });
-          setEditingTransactionId(null);
-        } else {
-          const newId = crypto.randomUUID();
-          newlyAddedIds.push(newId);
-          await db.transactions.add({
-            id: newId,
-            date: installmentDateStr,
-            accountId,
-            categoryId,
-            subcategoryId,
-            description: currentDesc,
-            amount: finalAmount,
-            status: txStatus,
-          });
-        }
+        const newId = crypto.randomUUID();
+        newlyAddedIds.push(newId);
+        await db.transactions.add({
+          id: newId,
+          date: installmentDateStr,
+          accountId,
+          categoryId,
+          subcategoryId,
+          description: currentDesc,
+          amount: finalAmount,
+          status: txStatus,
+          installmentGroupId,
+          installmentNumber: parsedInstallments > 1 ? i : undefined,
+          installmentTotal: parsedInstallments > 1 ? parsedInstallments : undefined,
+        });
       }
     }
 
@@ -237,7 +355,7 @@ export default function Transactions() {
     setAmount("");
     setInstallments(1);
 
-    if (!editingTransactionId && newlyAddedIds.length > 0) {
+    if (newlyAddedIds.length > 0) {
       setLastAddedTransactionIds(newlyAddedIds);
       setShowUndo(true);
       if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
@@ -258,10 +376,12 @@ export default function Transactions() {
   };
 
   const handleEdit = async (t: any) => {
+    const info = getInstallmentInfo(t);
+    setEditingInstallmentInfo(info);
     setEditingTransactionId(t.id);
     setDate(t.date);
     setSubcategoryId(t.subcategoryId);
-    setDescription(t.description);
+    setDescription(info.isInstallment ? info.baseDescription : t.description);
     setAmount(Math.abs(t.amount).toString());
     setInstallments(1);
     setIsPending(t.status === 'Pendente');
@@ -335,7 +455,7 @@ export default function Transactions() {
      setMoverTransaction(t);
      const acc = accounts?.find(a => a.id === t.accountId);
      if (acc && acc.isCreditCard && acc.closingDay && acc.dueDay) {
-        setMoverMonthStr(t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay));
+        setMoverMonthStr(t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay, cardBillPeriods, acc.id));
      } else {
         setMoverMonthStr(t.creditCardBillDate || t.date.substring(0, 7));
      }
@@ -367,6 +487,42 @@ export default function Transactions() {
   const targetMonthStr = useMemo(() => {
     return `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
   }, [currentDate]);
+
+  const openBillPeriodModal = (acc: any) => {
+    const period = getCreditCardBillPeriod(targetMonthStr, acc.closingDay, acc.dueDay, cardBillPeriods, acc.id);
+    setEditingPeriodAccount(acc);
+    setPeriodStartDate(period.startDateStr);
+    setPeriodEndDate(period.endDateStr);
+    setPeriodDueDate(period.dueDateStr);
+    setIsPeriodCustom(period.isCustom);
+    setIsBillPeriodModalOpen(true);
+  };
+
+  const handleSaveBillPeriod = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPeriodAccount || !periodStartDate || !periodEndDate || !periodDueDate) return;
+    
+    const periodId = `${editingPeriodAccount.id}_${targetMonthStr}`;
+    await db.cardBillPeriods.put({
+      id: periodId,
+      accountId: editingPeriodAccount.id,
+      monthStr: targetMonthStr,
+      startDate: periodStartDate,
+      endDate: periodEndDate,
+      dueDate: periodDueDate
+    });
+    
+    setIsBillPeriodModalOpen(false);
+    setEditingPeriodAccount(null);
+  };
+
+  const handleResetBillPeriod = async () => {
+    if (!editingPeriodAccount) return;
+    const periodId = `${editingPeriodAccount.id}_${targetMonthStr}`;
+    await db.cardBillPeriods.delete(periodId);
+    setIsBillPeriodModalOpen(false);
+    setEditingPeriodAccount(null);
+  };
 
   // Calcula o running balance e aplica filtro de período
   const { filteredTransactions, openingBalances } = useMemo(() => {
@@ -426,7 +582,7 @@ export default function Transactions() {
 
       if (acc.isCreditCard && acc.closingDay && acc.dueDay) {
          if (isMonthFilter) {
-            const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay);
+            const billMonth = t.creditCardBillDate || getNaturalBillMonth(t.date, acc.closingDay, acc.dueDay, cardBillPeriods, acc.id);
             if (billMonth === targetMonthStr) {
                include = true;
             }
@@ -465,7 +621,7 @@ export default function Transactions() {
       filteredTransactions: periodTxs,
       openingBalances
     };
-  }, [transactions, accounts, categories, subcategories, currentDate]);
+  }, [transactions, accounts, categories, subcategories, cardBillPeriods, currentDate, targetMonthStr]);
 
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -504,6 +660,7 @@ export default function Transactions() {
         <Dialog open={isOpen} onOpenChange={(open) => {
           if (!open) {
             setEditingTransactionId(null);
+            setEditingInstallmentInfo(null);
             setDate(new Date().toISOString().split("T")[0]);
             setAccountId("");
             setDestinationAccountId("");
@@ -518,7 +675,19 @@ export default function Transactions() {
             <DialogHeader>
               <DialogTitle>{editingTransactionId ? 'Editar Transação' : 'Registrar Transação'}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleAddTransaction} className="space-y-4 pt-4">
+
+            {editingInstallmentInfo?.isInstallment && (
+              <div className="bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200 border border-amber-200 dark:border-amber-800 p-3 rounded-md text-xs space-y-1">
+                <div className="font-semibold flex items-center gap-1.5">
+                  <span>📦</span> Compra Parcelada (Parcela {editingInstallmentInfo.currentNumber} de {editingInstallmentInfo.totalNumber})
+                </div>
+                <p>
+                  As alterações salvas serão aplicadas a esta parcela e a todas as parcelas futuras pendentes ({editingInstallmentInfo.currentNumber} a {editingInstallmentInfo.totalNumber}). Parcelas já baixadas (Pagas) não serão modificadas.
+                </p>
+              </div>
+            )}
+
+            <form onSubmit={handleAddTransaction} className="space-y-4 pt-2">
               <div className="space-y-2">
                 <Label>Data</Label>
                 <Input type="date" value={date} onChange={(e) => handleDateChange(e.target.value)} required />
@@ -681,6 +850,74 @@ export default function Transactions() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal para Ajustar Vigência da Fatura do Cartão */}
+      <Dialog open={isBillPeriodModalOpen} onOpenChange={setIsBillPeriodModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarDays size={20} className="text-blue-500" />
+              Vigência da Fatura ({targetMonthStr.split('-').reverse().join('/')})
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            <strong>{editingPeriodAccount?.name}</strong>: Ajuste as datas de início, fechamento e vencimento para a fatura deste mês. Os demais meses mantêm o cálculo automático padrão.
+          </p>
+          <form onSubmit={handleSaveBillPeriod} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="period-start">Início do Período de Compras</Label>
+              <Input 
+                id="period-start"
+                type="date"
+                value={periodStartDate}
+                onChange={(e) => setPeriodStartDate(e.target.value)}
+                required
+              />
+              <p className="text-[11px] text-muted-foreground">Data da primeira compra que entra nesta fatura.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="period-end">Data de Fechamento (Fim do Período)</Label>
+              <Input 
+                id="period-end"
+                type="date"
+                value={periodEndDate}
+                onChange={(e) => setPeriodEndDate(e.target.value)}
+                required
+              />
+              <p className="text-[11px] text-muted-foreground">Último dia de compras incluídas nesta fatura.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="period-due">Data de Vencimento</Label>
+              <Input 
+                id="period-due"
+                type="date"
+                value={periodDueDate}
+                onChange={(e) => setPeriodDueDate(e.target.value)}
+                required
+              />
+              <p className="text-[11px] text-muted-foreground">Dia do pagamento da fatura.</p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              {isPeriodCustom && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                  onClick={handleResetBillPeriod}
+                >
+                  Restaurar Padrão Automático
+                </Button>
+              )}
+              <Button type="submit" className="flex-1">
+                Salvar Vigência
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {accounts?.map(acc => {
         const accTransactions = filteredTransactions.filter(t => t.accountId === acc.id);
         const periodOpeningBalance = openingBalances[acc.id] || 0;
@@ -693,6 +930,7 @@ export default function Transactions() {
               </h2>
               <Button size="sm" className="flex items-center gap-2" onClick={() => {
                 setEditingTransactionId(null);
+                setEditingInstallmentInfo(null);
                 setDate(new Date().toISOString().split("T")[0]);
                 setAccountId(acc.id);
                 setDestinationAccountId("");
@@ -706,18 +944,49 @@ export default function Transactions() {
               </Button>
             </div>
             
-            {acc.isCreditCard && acc.closingDay && acc.dueDay && isMonthFilter && (
-              <div className="bg-blue-50/50 text-blue-800 p-3 rounded-md text-sm border border-blue-200 shadow-sm flex items-center">
-                <span className="text-xl mr-3">💳</span>
-                <div>
-                  <strong className="block mb-1 text-base">Fatura de {targetMonthStr.split('-').reverse().join('/')}</strong>
-                  <span className="opacity-90">
-                    Período de compras: {getCreditCardBillPeriod(targetMonthStr, acc.closingDay, acc.dueDay).startDate.toLocaleDateString('pt-BR')} a {getCreditCardBillPeriod(targetMonthStr, acc.closingDay, acc.dueDay).endDate.toLocaleDateString('pt-BR')} <br/>
-                    Vencimento: {getCreditCardBillPeriod(targetMonthStr, acc.closingDay, acc.dueDay).dueDate.toLocaleDateString('pt-BR')}
-                  </span>
+            {acc.isCreditCard && acc.closingDay && acc.dueDay && isMonthFilter && (() => {
+              const period = getCreditCardBillPeriod(targetMonthStr, acc.closingDay, acc.dueDay, cardBillPeriods, acc.id);
+              return (
+                <div className="bg-blue-50/50 dark:bg-blue-950/20 text-blue-900 dark:text-blue-200 p-4 rounded-lg text-sm border border-blue-200 dark:border-blue-900/50 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <span className="text-2xl flex-shrink-0">💳</span>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <strong className="text-base font-semibold">Fatura de {targetMonthStr.split('-').reverse().join('/')}</strong>
+                        {period.isCustom ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                            ⚡ Vigência Personalizada
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+                            Automático (Fecha dia {acc.closingDay}, Vence dia {acc.dueDay})
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs sm:text-sm opacity-90 space-y-0.5">
+                        <div>
+                          <span className="font-medium">Período de compras:</span> {period.startDate.toLocaleDateString('pt-BR')} a {period.endDate.toLocaleDateString('pt-BR')}
+                        </div>
+                        <div>
+                          <span className="font-medium">Vencimento:</span> {period.dueDate.toLocaleDateString('pt-BR')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    className="self-start sm:self-auto flex items-center gap-2 bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 border-blue-300 dark:border-blue-700 font-medium"
+                    onClick={() => openBillPeriodModal(acc)}
+                  >
+                    <CalendarDays size={16} />
+                    Alterar Vigência
+                  </Button>
                 </div>
-              </div>
-            )}
+              );
+            })()}
             
             <div className="border rounded-md bg-card">
               <Table>
