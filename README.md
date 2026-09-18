@@ -1,29 +1,38 @@
 # 📊 Controle Financeiro Pessoal
 
-Um sistema completo, rápido e seguro para você gerenciar suas finanças de forma estratégica. Todo o seu banco de dados fica salvo **localmente** no seu navegador, garantindo que só você tenha acesso às suas informações financeiras!
+Um sistema completo, rápido e seguro para você gerenciar suas finanças de forma estratégica. Todo o seu banco de dados fica salvo **localmente** no seu navegador (IndexedDB), garantindo que só você tenha acesso às suas informações financeiras!
 
 ---
 
-## 🚀 Como Instalar
+## 🌐 Como Acessar e Usar (Sem Instalar Nada!)
 
-O sistema foi construído em React + Vite. Para prepará-lo para rodar no seu computador pela primeira vez, você precisa baixar as dependências do projeto.
+Você não precisa baixar Git, Node.js ou código-fonte para usar o sistema.
 
-### No Windows
-1. Dê um duplo clique no arquivo `install.bat`.
-2. Aguarde a tela preta (Prompt de Comando) finalizar a instalação dos pacotes. 
-
-### No Linux / Mac
-1. Abra o terminal na pasta do projeto.
-2. Execute o comando: `./install.sh`
-3. Aguarde a mensagem de sucesso.
-
-*(Isso precisa ser feito apenas uma vez, ou sempre que baixar uma atualização do código-fonte).*
+1. Acesse o link do sistema no GitHub Pages:
+   👉 **`https://suricatoti.github.io/ControleFinanceiro/`**
+2. No seu navegador (Google Chrome ou Microsoft Edge no Windows):
+   - Clique no ícone de **"Instalar aplicativo"** na barra de endereços (ou no menu do navegador -> *Instalar Controle Financeiro*).
+3. Um atalho será criado na sua **Área de Trabalho** e no **Menu Iniciar**, funcionando como um programa nativo do Windows!
+4. **Funciona 100% offline:** mesmo sem internet, o aplicativo abre normalmente e seus dados continuam salvos no seu computador.
+5. **Atualizações automáticas:** sempre que novas melhorias forem publicadas no GitHub, seu app é atualizado automaticamente na próxima vez que abrir conectado à internet.
 
 ---
 
-## ⚡ Como Inicializar (Rodar o Sistema)
+## ⚙️ Ativação do GitHub Pages (Apenas no primeiro uso do repositório)
 
-Sempre que você quiser abrir o seu Controle Financeiro, você deve iniciar o servidor local.
+Para que o GitHub Actions publique automaticamente o site no ar:
+
+1. Acesse o seu repositório no GitHub: `https://github.com/suricatoti/ControleFinanceiro`
+2. Vá em **Settings** (Configurações) > **Pages** (no menu lateral esquerdo).
+3. Na seção **Build and deployment** > **Source**, selecione: **`GitHub Actions`**.
+4. Pronto! A cada novo `git push` na branch `main`, o sistema será compilado e publicado automaticamente.
+
+---
+
+## 💻 Para Desenvolvedores (Rodando Localmente)
+
+Se você desejar rodar o código-fonte em modo de desenvolvimento na sua máquina:
+
 
 ### No Windows
 1. Dê um duplo clique no arquivo `start.bat`.
