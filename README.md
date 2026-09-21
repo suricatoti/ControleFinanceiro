@@ -1,92 +1,125 @@
 # 📊 Controle Financeiro Pessoal
 
-Um sistema completo, rápido e seguro para você gerenciar suas finanças de forma estratégica. Todo o seu banco de dados fica salvo **localmente** no seu navegador (IndexedDB), garantindo que só você tenha acesso às suas informações financeiras!
+> # ⚠️ AVISO IMPORTANTE SOBRE SEUS DADOS E BACKUP
+>
+> ### 🔒 SEUS DADOS SÃO 100% LOCAIS E PRIVADOS
+> **Este sistema NÃO armazena seus dados em servidores externos ou na nuvem.**
+> Todos os seus lançamentos, contas, carteiras e configurações ficam salvos **exclusivamente na memória local do seu navegador/dispositivo (IndexedDB)**.
+>
+> ### 💾 A RESPONSABILIDADE DO BACKUP É DO USUÁRIO
+> - **Faça backups regulares:** Acesse o menu **Perfil** e clique em **Exportar Dados (Backup)** para baixar seu arquivo `.json` de segurança.
+> - **Risco de perda:** Limpar o histórico/dados do navegador, formatar o aparelho ou trocar de celular/computador sem ter feito o backup resultará na **perda definitiva dos seus dados**.
+> - **Sincronização entre aparelhos:** Para usar os mesmos dados em outro dispositivo (ex: do computador para o celular), basta exportar o arquivo no primeiro e importar na tela de **Perfil** do segundo.
 
 ---
 
-## 🌐 Como Acessar e Usar (Sem Instalar Nada!)
+## 🌐 Como Acessar
 
-Você não precisa baixar Git, Node.js ou código-fonte para usar o sistema.
-
-1. Acesse o link do sistema no GitHub Pages:
-   👉 **`https://suricatoti.github.io/ControleFinanceiro/`**
-2. No seu navegador (Google Chrome ou Microsoft Edge no Windows):
-   - Clique no ícone de **"Instalar aplicativo"** na barra de endereços (ou no menu do navegador -> *Instalar Controle Financeiro*).
-3. Um atalho será criado na sua **Área de Trabalho** e no **Menu Iniciar**, funcionando como um programa nativo do Windows!
-4. **Funciona 100% offline:** mesmo sem internet, o aplicativo abre normalmente e seus dados continuam salvos no seu computador.
-5. **Atualizações automáticas:** sempre que novas melhorias forem publicadas no GitHub, seu app é atualizado automaticamente na próxima vez que abrir conectado à internet.
+Acesse diretamente pelo navegador no link oficial:
+👉 **[https://suricatoti.github.io/ControleFinanceiro/](https://suricatoti.github.io/ControleFinanceiro/)**
 
 ---
 
-## ⚙️ Ativação do GitHub Pages (Apenas no primeiro uso do repositório)
+## 📱 Como Instalar no Celular e Computador (PWA)
 
-Para que o GitHub Actions publique automaticamente o site no ar:
+O Controle Financeiro é um **Progressive Web App (PWA)**. Ele pode ser instalado como um aplicativo nativo no seu celular (Android ou iPhone) ou computador (Windows, Mac ou Linux), funcionando **100% offline**, com carregamento instantâneo e sem precisar baixar nada em lojas de aplicativos.
 
-1. Acesse o seu repositório no GitHub: `https://github.com/suricatoti/ControleFinanceiro`
-2. Vá em **Settings** (Configurações) > **Pages** (no menu lateral esquerdo).
-3. Na seção **Build and deployment** > **Source**, selecione: **`GitHub Actions`**.
-4. Pronto! A cada novo `git push` na branch `main`, o sistema será compilado e publicado automaticamente.
+### 🍎 No iPhone e iPad (iOS - Safari)
+> **Atenção:** A Apple não permite botões de instalação automática direta. A instalação deve ser feita pelo Safari:
 
----
-
-## 💻 Para Desenvolvedores (Rodando Localmente)
-
-Se você desejar rodar o código-fonte em modo de desenvolvimento na sua máquina:
-
-
-### No Windows
-1. Dê um duplo clique no arquivo `start.bat`.
-2. O servidor será ligado. Em seguida, acesse no seu navegador o endereço (geralmente `http://localhost:5173`).
-
-### No Linux / Mac
-1. Abra o terminal na pasta do projeto.
-2. Execute o comando: `./start.sh`
-3. Abra o navegador no endereço indicado no terminal.
-
-> **Nota sobre o Banco de Dados (Carga Inicial):** Na primeira vez que você abrir o sistema, um banco de dados novinho será criado e preenchido automaticamente com as contas principais (Corrente e Carteira) e as categorias essenciais do dia a dia (Moradia, Transporte, Alimentação, etc), prontas para uso!
+1. Abra o link **[https://suricatoti.github.io/ControleFinanceiro/](https://suricatoti.github.io/ControleFinanceiro/)** obrigatoriamente no navegador **Safari** *(não use navegadores internos de apps como WhatsApp ou Instagram)*.
+2. Na barra inferior do Safari, toque no botão **Compartilhar** 📤 *(ícone de quadrado com a seta para cima)*.
+3. Role as opções para baixo e toque em **"Adicionar à Tela de Início"** ➕ *(Add to Home Screen)*.
+4. No canto superior direito, toque em **"Adicionar"**.
+5. O ícone do **Finanças** aparecerá na tela de início do seu iPhone e abrirá em tela cheia (modo app nativo).
 
 ---
 
-## 📖 Como Usar o Sistema
-
-O sistema é dividido nas seguintes telas no menu lateral:
-
-### 1. 📊 Visão Geral (Dashboard)
-O coração da sua estratégia financeira.
-- **Filtro de Período:** Use o filtro no canto superior direito para analisar "Mês Atual", "Ano atual", ou janelas de longo prazo (5 anos, 10 anos, Todo Período, Personalizado).
-- **Gráfico de Barras:** Em janelas curtas, exibe barras por mês. Em filtros de longo prazo, agrupa os anos estrategicamente para você comparar seu crescimento anual.
-- **Gráficos de Rosca:** Analise de onde o dinheiro vem e para onde ele vai. Você pode habilitar a caixinha **"Ver Subcategorias"** no gráfico de saídas para um detalhamento profundo dos seus gastos!
-
-### 2. 📝 Transações
-Aqui é o seu Extrato Bancário em tempo real.
-- **Nova Transação:** Adicione receitas e despesas.
-- **Parcelamentos Inteligentes:** Ao digitar o número de parcelas, o sistema fará a divisão exata (corrigindo arredondamentos de centavos na primeira parcela) e lançará cada cota nos meses futuros com anotação visual (ex: *Parcela 1 de 3*).
-- **Transferências:** Escolhendo o tipo "Transferência", o sistema pede uma "Conta de Origem" e "Conta de Destino". O valor debita de uma e credita na outra.
-- **Previsões e Baixas (Status Pendente):** Você pode marcar uma transação como "Pendente" (previsão). Ela fica opaca na lista. Quando o dinheiro de fato sair ou entrar, você clica em **"Baixa"**, podendo inclusive ajustar o valor final se for diferente da previsão.
-- **Conciliação Bancária (Conferência):** Clicando no ícone redondo vazio ao lado de "Excluir", você marca a transação com um "✓" verde, indicando que ela já foi conferida e está igual ao seu extrato bancário oficial. A descrição fica com um risco sutil para facilitar sua revisão.
-- **Saldo Automático:** O sistema calcula o "Saldo Anterior" antes do período filtrado e lista o saldo correndo dinamicamente ao lado de cada registro.
-
-### 3. 💳 Cartões de Crédito (Novo!)
-Contas de cartão de crédito possuem regras exclusivas e muito mais inteligência.
-- Ao criar uma conta e marcar a caixinha "É Cartão de Crédito", você informa o **Dia de Fechamento** e **Dia de Vencimento**.
-- As compras lançadas no cartão deixam de ser agrupadas pelo calendário normal e passam a ser **agrupadas por ciclo de Fatura**. O sistema exibe uma caixa azul avisando qual o ciclo atual, a data das compras abrangidas e o dia do pagamento!
-- **Mover Fatura:** Comprou perto do fechamento e o lançamento caiu na fatura errada? O botão "Mover" na tabela de transações permite forçar manualmente para qual mês/fatura aquela compra específica deve entrar.
-
-### 4. 🔄 Recorrências (Lançamentos Mensais)
-Abandone o trabalho manual! 
-- Na tela de **Recorrências**, você cadastra suas despesas e receitas fixas infinitas (ex: Assinatura da Netflix, Salário Mensal). 
-- O sistema varre automaticamente todos os meses e insere essas transações pendentes no seu fluxo, assim você sempre sabe o quanto já está comprometido para o futuro!
-
-### 5. 📂 Categorias e Subcategorias
-Controle suas árvores de gastos.
-- **Hierarquia:** Toda transação precisa pertencer a uma Subcategoria (ex: Mercado), que por sua vez pertence a uma Categoria Pai (ex: Alimentação).
-- **Classificação Sistêmica:** O sistema pede *Frequência* (Fixo/Variável) e *Natureza* (Essencial/Qualidade de Vida). Isso ajuda a disciplinar como você enxerga o dinheiro!
-- As categorias de transferência do sistema não podem ser excluídas para proteger a integridade do banco de dados.
-
-### 6. 🏦 Contas
-Gerencie os saldos de diferentes origens.
-- Você pode criar contas separadas (ex: Itaú, Nubank, Dinheiro Físico) e consultar o extrato filtrando por elas na tela de transações. Conta corrente ou cartão de crédito, tudo centralizado aqui.
+### 🤖 No Android (Google Chrome / Samsung Internet)
+1. Abra o link no **Google Chrome** no seu celular.
+2. Você pode:
+   - Tocar no botão **"Instalar Aplicativo Agora"** na tela de **Perfil** do app; OU
+   - Tocar no menu de **3 pontinhos** no canto superior direito do Chrome e escolher **"Instalar aplicativo"** ou **"Adicionar à tela inicial"**.
+3. O app será adicionado à sua gaveta de aplicativos e tela inicial.
 
 ---
 
-*Desenvolvido com 🩵 usando React, TypeScript, TailwindCSS e Dexie (IndexedDB).*
+### 💻 No Computador (Windows, Mac ou Linux)
+1. Abra o link no **Google Chrome** ou **Microsoft Edge**.
+2. Clique no ícone de instalação ⊕ no canto direito da barra de endereços (ou menu `...` > *Instalar Controle Financeiro*).
+3. Um atalho será criado na sua **Área de Trabalho** e no **Menu Iniciar**, rodando em janela própria como um software desktop.
+
+---
+
+## ✨ Funcionalidades e Layout Responsivo
+
+O sistema foi desenhado para oferecer a melhor experiência tanto em computadores widescreen quanto em smartphones:
+
+### 📱 Navegação Mobile Otimizada
+- **Bottom Navigation Bar:** Barra inferior fixa no celular para alternar rapidamente entre *Dashboard, Transações, Cadastros, Recorrências e Perfil* com uma só mão.
+- **Gestão de Múltiplas Carteiras no Mobile:** Crie, alterne, renomeie e exclua carteiras direto pelo topo da tela no celular.
+- **Cards Nativos de Transações:** No celular, substitui tabelas largas por cards fáceis de tocar, com badges de status, categoria, valor em destaque e conciliação rápida.
+- **Tema Claro e Escuro (Dark Mode):** Alternância instantânea com contraste e legibilidade ajustados.
+
+### 📊 1. Visão Geral (Dashboard)
+- **Saldos em Tempo Real:** Tabela consolidada de saldos por conta e total geral do mês.
+- **Contas Pendentes:** Acompanhe os vencimentos futuros do mês selecionado.
+- **Receitas vs Despesas:** Gráficos anuais comparativos e evolução de fluxo.
+- **Gráficos de Rosca por Categoria:** Detalhamento por categoria com opção de visualizar subcategorias e valores em R$.
+- **Planejamento Anual:** Evolução projetada de saldo ao longo dos 12 meses.
+
+### 📝 2. Transações
+- **Lançamentos Simples e Parcelados:** Divisão automática de parcelas com cálculo exato de centavos e projeção nos meses correspondentes.
+- **Transferências entre Contas:** Debita da conta de origem e credita na de destino em um único lançamento sincronizado.
+- **Previsões e Baixa:** Transações pendentes com baixa rápida e ajuste do valor efetivamente realizado.
+- **Conciliação Bancária:** Marque como conferido para auditar com seu extrato real.
+
+### 💳 3. Cartões de Crédito Inteligentes
+- **Ciclos de Fatura:** Lançamentos agrupados pelo ciclo de fechamento e vencimento, e não pelo mês calendário.
+- **Vigência Personalizada:** Ajuste manual de datas de início, fechamento e vencimento de faturas específicas.
+- **Mover Fatura:** Transfira compras entre faturas com facilidade.
+
+### 🔄 4. Recorrências (Assinaturas e Contas Fixas)
+- Cadastre contas fixas mensais ou anuais (aluguel, streaming, salários).
+- Projeção automática contínua de lançamentos pendentes no fluxo futuro.
+
+### 📂 5. Cadastros
+- **Contas:** Contas correntes, carteiras físicas, cartões de crédito e investimentos.
+- **Categorias e Subcategorias:** Classificação por tipo (*Receita/Despesa/Transferência*), frequência (*Fixo/Variável*) e natureza (*Essencial/Qualidade de Vida*).
+
+### ⚙️ 6. Perfil, Backup e Restauração
+- **Exportação Master:** Exporta todas as carteiras e históricos em um arquivo `.json` padronizado.
+- **Restauração Completa:** Importe seus backups a qualquer momento em qualquer navegador ou aparelho.
+
+---
+
+## 🛠️ Para Desenvolvedores (Rodando Localmente)
+
+### Pré-requisitos
+- Node.js 18+ instalado.
+
+### Instalação e Execução
+```bash
+# Instalar dependências
+npm install
+
+# Iniciar servidor de desenvolvimento
+npm run dev
+
+# Gerar build de produção
+npm run build
+```
+
+---
+
+## ⚙️ Ativação do GitHub Pages (Deploy Contínuo)
+
+1. Acesse o repositório no GitHub: `https://github.com/suricatoti/ControleFinanceiro`
+2. Vá em **Settings** > **Pages**.
+3. Em **Build and deployment** > **Source**, selecione: **`GitHub Actions`**.
+4. A cada `git push` na branch `main`, a compilação e publicação acontecerão automaticamente.
+
+---
+
+*Desenvolvido com 🩵 usando React, TypeScript, TailwindCSS, Lucide Icons, Recharts e Dexie (IndexedDB).*
+
