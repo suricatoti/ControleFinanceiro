@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { cn } from "@/lib/utils";
 
 export default function Categories() {
   const { db } = useWallet();
@@ -242,21 +243,23 @@ export default function Categories() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold tracking-tight mb-6">Cadastros</h1>
+    <div className="max-w-6xl mx-auto space-y-6">
+      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Cadastros</h1>
       
       <Tabs defaultValue="contas" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8">
-          <TabsTrigger value="contas">Contas</TabsTrigger>
-          <TabsTrigger value="categorias">Categorias</TabsTrigger>
-          <TabsTrigger value="subcategorias">Subcategorias</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 mb-6 sm:mb-8 h-10 sm:h-11">
+          <TabsTrigger value="contas" className="text-xs sm:text-sm">Contas</TabsTrigger>
+          <TabsTrigger value="categorias" className="text-xs sm:text-sm">Categorias</TabsTrigger>
+          <TabsTrigger value="subcategorias" className="text-xs sm:text-sm">Subcategorias</TabsTrigger>
         </TabsList>
         
         {/* TAB DE CONTAS */}
         <TabsContent value="contas">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-1 bg-card p-6 rounded-lg border shadow-sm h-fit">
-              <h2 className="text-xl font-semibold mb-4">Nova Conta</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+            <div className="lg:col-span-1 bg-card p-4 sm:p-6 rounded-lg border shadow-sm h-fit">
+              <h2 className="text-lg sm:text-xl font-semibold mb-4">
+                {editingAccountId ? "Editar Conta" : "Nova Conta"}
+              </h2>
               <form onSubmit={handleAddAccount} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="accName">Nome da Conta</Label>
@@ -295,9 +298,9 @@ export default function Categories() {
                   <Label htmlFor="accIsCreditCard" className="cursor-pointer">Cartão de crédito?</Label>
                 </div>
                 {accIsCreditCard && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="accClosingDay">Dia de Fechamento</Label>
+                      <Label htmlFor="accClosingDay" className="text-xs sm:text-sm">Dia Fechamento</Label>
                       <Input 
                         id="accClosingDay" 
                         type="number" 
@@ -309,7 +312,7 @@ export default function Categories() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="accDueDay">Dia de Vencimento</Label>
+                      <Label htmlFor="accDueDay" className="text-xs sm:text-sm">Dia Vencimento</Label>
                       <Input 
                         id="accDueDay" 
                         type="number" 
@@ -322,8 +325,8 @@ export default function Categories() {
                     </div>
                   </div>
                 )}
-                <div className="flex gap-2">
-                  <Button type="submit" className="w-full">
+                <div className="flex gap-2 pt-1">
+                  <Button type="submit" className="flex-1">
                     {editingAccountId ? "Atualizar Conta" : "Salvar Conta"}
                   </Button>
                   {editingAccountId && (
@@ -336,7 +339,8 @@ export default function Categories() {
             </div>
             
             <div className="lg:col-span-2">
-              <div className="border rounded-md bg-card">
+              {/* Desktop Table View */}
+              <div className="hidden sm:block border rounded-md bg-card overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -348,7 +352,14 @@ export default function Categories() {
                   <TableBody>
                     {accounts?.map((acc) => (
                       <TableRow key={acc.id}>
-                        <TableCell className="font-medium">{acc.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {acc.name}
+                          {acc.isCreditCard && (
+                            <span className="ml-2 text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                              Cartão (Fecha: {acc.closingDay}, Vence: {acc.dueDay})
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.initialBalance)}
                         </TableCell>
@@ -366,7 +377,7 @@ export default function Categories() {
                     ))}
                     {!accounts?.length && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
                           Nenhuma conta cadastrada.
                         </TableCell>
                       </TableRow>
@@ -374,15 +385,49 @@ export default function Categories() {
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Mobile Card List View */}
+              <div className="block sm:hidden space-y-2.5">
+                {accounts?.map((acc) => (
+                  <div key={acc.id} className="p-3.5 rounded-lg border bg-card shadow-sm flex items-center justify-between gap-3">
+                    <div className="space-y-1 min-w-0">
+                      <div className="font-semibold text-sm text-foreground truncate">{acc.name}</div>
+                      {acc.isCreditCard && (
+                        <div className="text-[11px] text-blue-600 dark:text-blue-400 font-medium">
+                          Cartão (Fecha dia {acc.closingDay}, Vence dia {acc.dueDay})
+                        </div>
+                      )}
+                      <div className="text-xs text-muted-foreground">
+                        Saldo Inicial: <strong className="text-foreground">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acc.initialBalance)}</strong>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button variant="outline" size="sm" className="h-7 text-xs px-2.5" onClick={() => handleEditAccount(acc)}>
+                        Editar
+                      </Button>
+                      <Button variant="destructive" size="sm" className="h-7 text-xs px-2.5" onClick={() => openDeleteAccount(acc)}>
+                        Excluir
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {!accounts?.length && (
+                  <div className="text-center py-6 text-sm text-muted-foreground bg-muted/20 border border-dashed rounded-lg">
+                    Nenhuma conta cadastrada.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </TabsContent>
 
         {/* TAB DE CATEGORIAS */}
         <TabsContent value="categorias">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-1 bg-card p-6 rounded-lg border shadow-sm h-fit">
-              <h2 className="text-xl font-semibold mb-4">Nova Categoria</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+            <div className="lg:col-span-1 bg-card p-4 sm:p-6 rounded-lg border shadow-sm h-fit">
+              <h2 className="text-lg sm:text-xl font-semibold mb-4">
+                {editingCategoryId ? "Editar Categoria" : "Nova Categoria"}
+              </h2>
               <form onSubmit={handleAddCategory} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="catName">Nome</Label>
@@ -394,8 +439,8 @@ export default function Categories() {
                     required 
                   />
                 </div>
-                <div className="flex gap-2">
-                  <Button type="submit" className="w-full">
+                <div className="flex gap-2 pt-1">
+                  <Button type="submit" className="flex-1">
                     {editingCategoryId ? "Atualizar Categoria" : "Salvar Categoria"}
                   </Button>
                   {editingCategoryId && (
@@ -408,7 +453,8 @@ export default function Categories() {
             </div>
             
             <div className="lg:col-span-2">
-              <div className="border rounded-md bg-card">
+              {/* Desktop Table View */}
+              <div className="hidden sm:block border rounded-md bg-card overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -447,15 +493,45 @@ export default function Categories() {
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Mobile Card List View */}
+              <div className="block sm:hidden space-y-2">
+                {categories?.map((cat) => (
+                  <div key={cat.id} className="p-3 rounded-lg border bg-card shadow-sm flex items-center justify-between gap-3">
+                    <span className="font-medium text-sm text-foreground truncate">{cat.name}</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button variant="outline" size="sm" className="h-7 text-xs px-2.5" onClick={() => handleEditCategory(cat)}>
+                        Editar
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="h-7 text-xs px-2.5" 
+                        onClick={() => openDeleteCategory(cat)}
+                        disabled={cat.name.toLowerCase().includes("transferência")}
+                      >
+                        Excluir
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {!categories?.length && (
+                  <div className="text-center py-6 text-sm text-muted-foreground bg-muted/20 border border-dashed rounded-lg">
+                    Nenhuma categoria cadastrada.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </TabsContent>
 
         {/* TAB DE SUBCATEGORIAS */}
         <TabsContent value="subcategorias">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-1 bg-card p-6 rounded-lg border shadow-sm h-fit">
-              <h2 className="text-xl font-semibold mb-4">Nova Subcategoria</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+            <div className="lg:col-span-1 bg-card p-4 sm:p-6 rounded-lg border shadow-sm h-fit">
+              <h2 className="text-lg sm:text-xl font-semibold mb-4">
+                {editingSubcategoryId ? "Editar Subcategoria" : "Nova Subcategoria"}
+              </h2>
               <form onSubmit={handleAddSubcategory} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="subCatName">Nome</Label>
@@ -521,8 +597,8 @@ export default function Categories() {
                     </div>
                   </>
                 )}
-                <div className="flex gap-2">
-                  <Button type="submit" className="w-full">
+                <div className="flex gap-2 pt-1">
+                  <Button type="submit" className="flex-1">
                     {editingSubcategoryId ? "Atualizar Subcategoria" : "Salvar Subcategoria"}
                   </Button>
                   {editingSubcategoryId && (
@@ -535,7 +611,8 @@ export default function Categories() {
             </div>
             
             <div className="lg:col-span-2">
-              <div className="border rounded-md bg-card">
+              {/* Desktop Table View */}
+              <div className="hidden sm:block border rounded-md bg-card overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -553,7 +630,7 @@ export default function Categories() {
                         <TableCell className="font-medium">{subcat.name}</TableCell>
                         <TableCell>{categories?.find(c => c.id === subcat.categoryId)?.name || 'Desconhecida'}</TableCell>
                         <TableCell>
-                          <span className={subcat.type === 'Receita' ? 'text-blue-500' : (subcat.type === 'Despesa' ? 'text-red-500' : 'text-gray-500 font-medium')}>
+                          <span className={subcat.type === 'Receita' ? 'text-blue-500 font-medium' : (subcat.type === 'Despesa' ? 'text-red-500 font-medium' : 'text-gray-500 font-medium')}>
                             {subcat.type}
                           </span>
                         </TableCell>
@@ -585,6 +662,58 @@ export default function Categories() {
                     )}
                   </TableBody>
                 </Table>
+              </div>
+
+              {/* Mobile Card List View */}
+              <div className="block sm:hidden space-y-2.5">
+                {sortedSubcategories?.map((subcat) => (
+                  <div key={subcat.id} className="p-3.5 rounded-lg border bg-card shadow-sm space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-semibold text-sm text-foreground">{subcat.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {categories?.find(c => c.id === subcat.categoryId)?.name || 'Desconhecida'}
+                        </div>
+                      </div>
+                      <span className={cn(
+                        "text-xs px-2 py-0.5 rounded-full font-medium shrink-0",
+                        subcat.type === 'Receita' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
+                        subcat.type === 'Despesa' ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' :
+                        'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                      )}>
+                        {subcat.type}
+                      </span>
+                    </div>
+
+                    {subcat.type !== 'Transferência' && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1 border-t border-border/50">
+                        <span className="bg-muted px-2 py-0.5 rounded text-[11px]">{subcat.frequency}</span>
+                        <span className="bg-muted px-2 py-0.5 rounded text-[11px]">{subcat.nature}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-end gap-1.5 pt-1.5 border-t border-border/40">
+                      <Button variant="outline" size="sm" className="h-7 text-xs px-2.5" onClick={() => handleEditSubcategory(subcat)}>
+                        Editar
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="h-7 text-xs px-2.5" 
+                        onClick={() => openDeleteSubcategory(subcat)}
+                        disabled={subcat.type === 'Transferência'}
+                      >
+                        Excluir
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+
+                {!sortedSubcategories?.length && (
+                  <div className="text-center py-6 text-sm text-muted-foreground bg-muted/20 border border-dashed rounded-lg">
+                    Nenhuma subcategoria cadastrada.
+                  </div>
+                )}
               </div>
             </div>
           </div>

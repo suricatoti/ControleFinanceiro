@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Receipt, Tags, User, Repeat, Moon, Sun, Pencil, Trash2 } from "lucide-react";
+import { LayoutDashboard, Receipt, Tags, User, Repeat, Moon, Sun, Pencil, Trash2, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
@@ -77,14 +77,19 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans transition-colors duration-300">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div className="font-bold text-xl tracking-tight text-primary flex items-center gap-2">
-              <span className="text-2xl drop-shadow-sm">💰</span> Finanças
-            </div>
+      {/* Top Header */}
+      <header className="sticky top-0 z-40 w-full border-b bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70 shadow-sm">
+        <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
+          
+          {/* Logo & Wallet Selector (Desktop & Mobile) */}
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <Link to="/" className="font-bold text-lg sm:text-xl tracking-tight text-primary flex items-center gap-1.5 shrink-0">
+              <span className="text-xl sm:text-2xl drop-shadow-sm">💰</span>
+              <span className="hidden xs:inline sm:inline">Finanças</span>
+            </Link>
             
-            <div className="hidden md:flex items-center gap-2 border-l pl-6 h-8">
+            {/* Desktop Wallet Selector */}
+            <div className="hidden md:flex items-center gap-2 border-l pl-4 lg:pl-6 h-8">
               <Select value={activeWalletId} onValueChange={(val) => {
                 if (val === 'create_new') {
                   setIsNewWalletOpen(true);
@@ -92,7 +97,7 @@ export function Layout() {
                   switchWallet(val);
                 }
               }}>
-                <SelectTrigger className="w-[180px] h-8 bg-muted/50 border-none font-medium">
+                <SelectTrigger className="w-[160px] lg:w-[180px] h-8 bg-muted/60 border-none font-medium text-xs sm:text-sm">
                   <SelectValue placeholder="Selecione a carteira" />
                 </SelectTrigger>
                 <SelectContent>
@@ -128,10 +133,61 @@ export function Layout() {
                 </Button>
               )}
             </div>
+
+            {/* Mobile Wallet Selector */}
+            <div className="flex md:hidden items-center gap-1 min-w-0">
+              <Select value={activeWalletId} onValueChange={(val) => {
+                if (val === 'create_new') {
+                  setIsNewWalletOpen(true);
+                } else {
+                  switchWallet(val);
+                }
+              }}>
+                <SelectTrigger className="h-7 sm:h-8 px-2 max-w-[110px] xs:max-w-[140px] bg-muted/60 border-none text-xs font-medium truncate">
+                  <Wallet className="w-3.5 h-3.5 mr-1 shrink-0 text-primary" />
+                  <SelectValue placeholder="Carteira" />
+                </SelectTrigger>
+                <SelectContent>
+                  {wallets.map(w => (
+                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                  ))}
+                  <SelectItem value="create_new" className="text-primary font-bold border-t mt-1">
+                    + Nova Carteira...
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0"
+                onClick={() => {
+                  setRenameWalletName(activeWallet?.name || "");
+                  setIsRenameWalletOpen(true);
+                }}
+                title="Renomear Carteira"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+
+              {activeWalletId !== 'default' && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7 text-red-400 hover:text-red-500 shrink-0"
+                  onClick={() => setIsDeleteWalletOpen(true)}
+                  title="Excluir Carteira"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <nav className="flex space-x-1">
+          {/* Right Header Navigation (Desktop) & Theme Toggle */}
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            {/* Desktop Navigation Links */}
+            <nav className="hidden md:flex space-x-1">
               {links.map((link) => {
                 const Icon = link.icon;
                 const isActive = location.pathname === link.href;
@@ -147,28 +203,62 @@ export function Layout() {
                     )}
                   >
                     <Icon className="w-4 h-4" />
-                    <span className="hidden sm:inline-block">{link.name}</span>
+                    <span>{link.name}</span>
                   </Link>
                 );
               })}
             </nav>
             
-            <div className="h-6 w-px bg-border mx-1"></div>
+            <div className="hidden md:block h-6 w-px bg-border mx-1"></div>
             
+            {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              aria-label="Toggle theme"
+              className="p-1.5 sm:p-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-95"
+              aria-label="Alternar tema claro/escuro"
             >
-              {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+              {theme === "light" ? <Moon className="w-4 h-4 sm:w-5 sm:h-5" /> : <Sun className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
           </div>
         </div>
       </header>
-      <main className="flex-1 container mx-auto px-4 py-8 animate-in fade-in duration-500">
+
+      {/* Main Content Body */}
+      <main className="flex-1 container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-8 animate-in fade-in duration-500">
         <Outlet />
       </main>
 
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border shadow-lg pb-safe">
+        <div className="grid grid-cols-5 h-16 max-w-lg mx-auto">
+          {links.map((link) => {
+            const Icon = link.icon;
+            const isActive = location.pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                to={link.href}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-1 transition-all duration-150 select-none py-1",
+                  isActive
+                    ? "text-primary font-semibold"
+                    : "text-muted-foreground hover:text-foreground active:scale-90"
+                )}
+              >
+                <div className={cn(
+                  "p-1 rounded-xl transition-all",
+                  isActive ? "bg-primary/15 text-primary scale-110" : ""
+                )}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] tracking-tight">{link.name}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* Dialog: Nova Carteira */}
       <Dialog open={isNewWalletOpen} onOpenChange={setIsNewWalletOpen}>
         <DialogContent>
           <DialogHeader>
@@ -190,6 +280,7 @@ export function Layout() {
         </DialogContent>
       </Dialog>
 
+      {/* Dialog: Renomear Carteira */}
       <Dialog open={isRenameWalletOpen} onOpenChange={setIsRenameWalletOpen}>
         <DialogContent>
           <DialogHeader>
@@ -211,6 +302,7 @@ export function Layout() {
         </DialogContent>
       </Dialog>
 
+      {/* ConfirmDialog: Excluir Carteira */}
       <ConfirmDialog
         open={isDeleteWalletOpen}
         onOpenChange={setIsDeleteWalletOpen}

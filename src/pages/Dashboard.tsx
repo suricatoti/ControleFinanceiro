@@ -322,42 +322,56 @@ export default function Dashboard() {
   const totalBalance = accountBalances.reduce((acc, curr) => acc + curr.currentBalance, 0);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
+      {/* Header & Global Filters */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">Visão Geral</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Visão Geral</h1>
         
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex items-center gap-2 bg-muted/30 px-3 py-2 rounded-md border">
-            <input type="checkbox" id="global-include-pending" checked={includePending} onChange={(e) => setIncludePending(e.target.checked)} className="h-4 w-4 cursor-pointer" />
-            <label htmlFor="global-include-pending" className="text-sm font-medium leading-none cursor-pointer select-none">Incluir Previstas</label>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 bg-muted/40 px-2.5 py-1.5 rounded-md border text-xs sm:text-sm">
+            <input 
+              type="checkbox" 
+              id="global-include-pending" 
+              checked={includePending} 
+              onChange={(e) => setIncludePending(e.target.checked)} 
+              className="h-4 w-4 cursor-pointer rounded" 
+            />
+            <label htmlFor="global-include-pending" className="cursor-pointer select-none">Incluir Previstas</label>
           </div>
           
-          <div className="flex items-center gap-2 bg-muted/30 px-3 py-2 rounded-md border">
-            <input type="checkbox" id="global-include-credit-card" checked={includeCreditCards} onChange={(e) => setIncludeCreditCards(e.target.checked)} className="h-4 w-4 cursor-pointer" />
-            <label htmlFor="global-include-credit-card" className="text-sm font-medium leading-none cursor-pointer select-none">Incluir Cartões</label>
+          <div className="flex items-center gap-2 bg-muted/40 px-2.5 py-1.5 rounded-md border text-xs sm:text-sm">
+            <input 
+              type="checkbox" 
+              id="global-include-credit-card" 
+              checked={includeCreditCards} 
+              onChange={(e) => setIncludeCreditCards(e.target.checked)} 
+              className="h-4 w-4 cursor-pointer rounded" 
+            />
+            <label htmlFor="global-include-credit-card" className="cursor-pointer select-none">Incluir Cartões</label>
           </div>
 
-          <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigateMonth(-1)}>
+          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-md border">
+            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => navigateMonth(-1)}>
               <ChevronLeft size={16} />
             </Button>
-            <span className="font-bold min-w-[150px] text-center text-sm capitalize">
+            <span className="font-bold min-w-[120px] sm:min-w-[140px] text-center text-xs sm:text-sm capitalize">
               {currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
             </span>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigateMonth(1)}>
+            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => navigateMonth(1)}>
               <ChevronRight size={16} />
             </Button>
           </div>
         </div>
       </div>
 
+      {/* Saldo das Contas */}
       <Card>
-        <CardHeader>
-          <CardTitle className="capitalize">
+        <CardHeader className="py-4">
+          <CardTitle className="text-base sm:text-lg capitalize">
             Saldo em {currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
           <Table>
             <TableHeader>
               <TableRow>
@@ -368,15 +382,15 @@ export default function Dashboard() {
             <TableBody>
               {accountBalances.map((acc) => (
                 <TableRow key={acc.id}>
-                  <TableCell className="font-medium">{acc.name}</TableCell>
-                  <TableCell className={`text-right font-bold ${acc.currentBalance >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                  <TableCell className="font-medium text-xs sm:text-sm">{acc.name}</TableCell>
+                  <TableCell className={`text-right font-bold text-xs sm:text-sm ${acc.currentBalance >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
                     {formatCurrency(acc.currentBalance)}
                   </TableCell>
                 </TableRow>
               ))}
-              <TableRow className="bg-muted/50">
-                <TableCell className="font-bold">Total Geral</TableCell>
-                <TableCell className={`text-right font-bold text-lg ${totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+              <TableRow className="bg-muted/50 font-bold">
+                <TableCell className="font-bold text-xs sm:text-sm">Total Geral</TableCell>
+                <TableCell className={`text-right font-bold text-sm sm:text-base ${totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                   {formatCurrency(totalBalance)}
                 </TableCell>
               </TableRow>
@@ -385,48 +399,71 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Contas Pendentes */}
       {pendingTransactions.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Contas Pendentes (No Período)</CardTitle>
+          <CardHeader className="py-4">
+            <CardTitle className="text-base sm:text-lg">Contas Pendentes (No Período)</CardTitle>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingTransactions.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="font-medium text-orange-600">
-                      {new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                    </TableCell>
-                    <TableCell>{t.categoryName}</TableCell>
-                    <TableCell>{t.description || '-'}</TableCell>
-                    <TableCell className={`text-right font-bold ${t.amount >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
-                      {formatCurrency(Math.abs(t.amount))}
-                    </TableCell>
+          <CardContent className="px-3 sm:px-6">
+            {/* Desktop Table View */}
+            <div className="hidden sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {pendingTransactions.map((t) => (
+                    <TableRow key={t.id}>
+                      <TableCell className="font-medium text-orange-600">
+                        {new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                      </TableCell>
+                      <TableCell>{t.categoryName}</TableCell>
+                      <TableCell>{t.description || '-'}</TableCell>
+                      <TableCell className={`text-right font-bold ${t.amount >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                        {formatCurrency(Math.abs(t.amount))}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="block sm:hidden space-y-2">
+              {pendingTransactions.map((t) => (
+                <div key={t.id} className="p-3 rounded-lg border bg-muted/20 flex items-center justify-between gap-3 text-xs">
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="font-bold text-orange-600 text-[11px]">
+                      {new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                    </div>
+                    <div className="font-medium text-foreground text-xs sm:text-sm truncate">{t.description || '-'}</div>
+                    <div className="text-muted-foreground text-[11px] truncate">{t.categoryName}</div>
+                  </div>
+                  <div className={`font-bold text-sm shrink-0 ${t.amount >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                    {formatCurrency(Math.abs(t.amount))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
 
+      {/* Gráfico de Barras: Receitas vs Despesas */}
       <Card>
-        <CardHeader className="flex flex-row justify-between items-center pb-2">
-          <CardTitle>Receitas vs Despesas (Visão Anual)</CardTitle>
-          <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border">
+        <CardHeader className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 pb-2">
+          <CardTitle className="text-base sm:text-lg">Receitas vs Despesas (Visão Anual)</CardTitle>
+          <div className="flex items-center gap-1 sm:gap-2 bg-muted/40 p-1 rounded-md border self-start sm:self-auto">
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentYear(y => y - 1)}>
               <ChevronLeft size={14} />
             </Button>
-            <span className="font-bold min-w-[80px] text-center text-sm">
+            <span className="font-bold min-w-[60px] sm:min-w-[80px] text-center text-xs sm:text-sm">
               {currentYear}
             </span>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentYear(y => y + 1)}>
@@ -434,15 +471,15 @@ export default function Dashboard() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="h-[350px] w-full">
+        <CardContent className="px-1 sm:px-6">
+          <div className="h-[280px] sm:h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <BarChart data={barChartData} margin={{ top: 15, right: 10, left: -10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                <XAxis dataKey="label" />
-                <YAxis tickFormatter={(val) => `R$ ${val}`} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis tickFormatter={(val) => `R$ ${val}`} tick={{ fontSize: 11 }} />
                 <Tooltip content={<CustomBarTooltip />} />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
                 <Bar dataKey="Receitas" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -451,23 +488,30 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      {/* Gráficos de Rosca: Entradas e Saídas por Categoria */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle>Entradas por Categoria</CardTitle>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="val-income" checked={showIncomeValues} onChange={(e) => setShowIncomeValues(e.target.checked)} className="h-4 w-4 cursor-pointer" />
-                <label htmlFor="val-income" className="text-sm font-medium leading-none cursor-pointer select-none">Valor R$</label>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2">
+            <CardTitle className="text-base sm:text-lg">Entradas por Categoria</CardTitle>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <input 
+                  type="checkbox" 
+                  id="val-income" 
+                  checked={showIncomeValues} 
+                  onChange={(e) => setShowIncomeValues(e.target.checked)} 
+                  className="h-3.5 w-3.5 cursor-pointer rounded" 
+                />
+                <label htmlFor="val-income" className="text-xs font-medium leading-none cursor-pointer select-none">Valor R$</label>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px] w-full">
+          <CardContent className="px-2 sm:px-6">
+            <div className="h-[260px] sm:h-[300px] w-full">
               {pieIncome.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={pieIncome} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                    <Pie data={pieIncome} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value">
                       {pieIncome.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
@@ -478,11 +522,11 @@ export default function Dashboard() {
                         name
                       ]} 
                     />
-                    <Legend formatter={(value, entry: any) => showIncomeValues ? `${value}: ${formatCurrency(entry.payload.value)}` : value} />
+                    <Legend wrapperStyle={{ fontSize: '11px' }} formatter={(value, entry: any) => showIncomeValues ? `${value}: ${formatCurrency(entry.payload.value)}` : value} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                   Nenhuma receita registrada
                 </div>
               )}
@@ -491,25 +535,37 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle>Saídas por Categoria</CardTitle>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="val-expense" checked={showExpenseValues} onChange={(e) => setShowExpenseValues(e.target.checked)} className="h-4 w-4 cursor-pointer" />
-                <label htmlFor="val-expense" className="text-sm font-medium leading-none cursor-pointer select-none">Valor R$</label>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2">
+            <CardTitle className="text-base sm:text-lg">Saídas por Categoria</CardTitle>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <input 
+                  type="checkbox" 
+                  id="val-expense" 
+                  checked={showExpenseValues} 
+                  onChange={(e) => setShowExpenseValues(e.target.checked)} 
+                  className="h-3.5 w-3.5 cursor-pointer rounded" 
+                />
+                <label htmlFor="val-expense" className="text-xs font-medium leading-none cursor-pointer select-none">Valor R$</label>
               </div>
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="subcat-expense" checked={showSubcategoriesExpense} onChange={(e) => setShowSubcategoriesExpense(e.target.checked)} className="h-4 w-4 cursor-pointer" />
-                <label htmlFor="subcat-expense" className="text-sm font-medium leading-none cursor-pointer select-none">Ver Subcategorias</label>
+              <div className="flex items-center gap-1.5">
+                <input 
+                  type="checkbox" 
+                  id="subcat-expense" 
+                  checked={showSubcategoriesExpense} 
+                  onChange={(e) => setShowSubcategoriesExpense(e.target.checked)} 
+                  className="h-3.5 w-3.5 cursor-pointer rounded" 
+                />
+                <label htmlFor="subcat-expense" className="text-xs font-medium leading-none cursor-pointer select-none">Subcategorias</label>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px] w-full">
+          <CardContent className="px-2 sm:px-6">
+            <div className="h-[260px] sm:h-[300px] w-full">
               {pieExpense.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={pieExpense} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                    <Pie data={pieExpense} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value">
                       {pieExpense.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
@@ -520,11 +576,11 @@ export default function Dashboard() {
                         name
                       ]} 
                     />
-                    <Legend formatter={(value, entry: any) => showExpenseValues ? `${value}: ${formatCurrency(entry.payload.value)}` : value} />
+                    <Legend wrapperStyle={{ fontSize: '11px' }} formatter={(value, entry: any) => showExpenseValues ? `${value}: ${formatCurrency(entry.payload.value)}` : value} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                   Nenhuma despesa registrada
                 </div>
               )}
@@ -533,15 +589,16 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      {/* Planejamento Anual */}
       {futureBalancesData.length > 0 && (
         <Card>
-          <CardHeader className="flex flex-row justify-between items-center pb-2">
-            <CardTitle>Planejamento Anual (Evolução de Saldo)</CardTitle>
-            <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border">
+          <CardHeader className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 pb-2">
+            <CardTitle className="text-base sm:text-lg">Planejamento Anual (Evolução de Saldo)</CardTitle>
+            <div className="flex items-center gap-1 sm:gap-2 bg-muted/40 p-1 rounded-md border self-start sm:self-auto">
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFutureYear(y => y - 1)}>
                 <ChevronLeft size={14} />
               </Button>
-              <span className="font-bold min-w-[80px] text-center text-sm">
+              <span className="font-bold min-w-[60px] sm:min-w-[80px] text-center text-xs sm:text-sm">
                 {futureYear}
               </span>
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFutureYear(y => y + 1)}>
@@ -549,15 +606,15 @@ export default function Dashboard() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="h-[350px] w-full">
+          <CardContent className="px-1 sm:px-6">
+            <div className="h-[280px] sm:h-[350px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={futureBalancesData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <LineChart data={futureBalancesData} margin={{ top: 15, right: 15, left: -10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                  <XAxis dataKey="label" />
-                  <YAxis tickFormatter={(val) => `R$ ${val}`} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={(val) => `R$ ${val}`} tick={{ fontSize: 11 }} />
                   <Tooltip content={<CustomLineTooltip />} />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: '12px' }} />
                   {accounts?.filter(a => !a.isCreditCard).map((acc, index) => (
                     <Line 
                       key={acc.id} 
@@ -565,8 +622,8 @@ export default function Dashboard() {
                       dataKey={acc.name} 
                       stroke={COLORS[index % COLORS.length]} 
                       strokeWidth={2}
-                      dot={{ r: 4 }}
-                      activeDot={{ r: 6 }}
+                      dot={{ r: 3 }}
+                      activeDot={{ r: 5 }}
                     />
                   ))}
                 </LineChart>

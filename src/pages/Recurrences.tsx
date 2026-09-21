@@ -166,67 +166,116 @@ export default function Recurrences() {
   const monthlyRecurrences = recurrences?.filter(r => r.period !== 'anual') || [];
   const annualRecurrences = recurrences?.filter(r => r.period === 'anual') || [];
 
-  const renderTable = (data: typeof recurrences) => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Descrição</TableHead>
-          <TableHead>Categoria</TableHead>
-          <TableHead>Data Inicial</TableHead>
-          <TableHead className="text-right">Valor</TableHead>
-          <TableHead></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {data?.sort((a, b) => {
-          const catA = categories?.find(c => c.id === a.categoryId)?.name || '';
-          const catB = categories?.find(c => c.id === b.categoryId)?.name || '';
-          if (catA !== catB) return catA.localeCompare(catB);
-          
-          const subA = subcategories?.find(s => s.id === a.subcategoryId)?.name || '';
-          const subB = subcategories?.find(s => s.id === b.subcategoryId)?.name || '';
-          return subA.localeCompare(subB);
-        }).map((r) => {
-          const cat = categories?.find(c => c.id === r.categoryId);
-          const sub = subcategories?.find(s => s.id === r.subcategoryId);
-          return (
-            <TableRow key={r.id}>
-              <TableCell className="font-medium">{r.description}</TableCell>
-              <TableCell>{cat?.name} {sub ? `> ${sub.name}` : ''}</TableCell>
-              <TableCell>
-                {new Date(r.startDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-              </TableCell>
-              <TableCell className={`text-right font-bold ${r.amount > 0 ? 'text-blue-500' : 'text-red-500'}`}>
-                {formatCurrency(Math.abs(r.amount))}
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(r)}>Editar</Button>
-                  <Button variant="destructive" size="sm" onClick={() => openDeleteConfirm(r)}>Excluir</Button>
+  const renderTable = (data: typeof recurrences) => {
+    const sortedData = data?.sort((a, b) => {
+      const catA = categories?.find(c => c.id === a.categoryId)?.name || '';
+      const catB = categories?.find(c => c.id === b.categoryId)?.name || '';
+      if (catA !== catB) return catA.localeCompare(catB);
+      
+      const subA = subcategories?.find(s => s.id === a.subcategoryId)?.name || '';
+      const subB = subcategories?.find(s => s.id === b.subcategoryId)?.name || '';
+      return subA.localeCompare(subB);
+    }) || [];
+
+    return (
+      <>
+        {/* Desktop Table View */}
+        <div className="hidden sm:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Data Inicial</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+                <TableHead></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedData.map((r) => {
+                const cat = categories?.find(c => c.id === r.categoryId);
+                const sub = subcategories?.find(s => s.id === r.subcategoryId);
+                return (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">{r.description || 'Sem descrição'}</TableCell>
+                    <TableCell>{cat?.name} {sub ? `> ${sub.name}` : ''}</TableCell>
+                    <TableCell>
+                      {new Date(r.startDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                    </TableCell>
+                    <TableCell className={`text-right font-bold ${r.amount > 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                      {formatCurrency(Math.abs(r.amount))}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(r)}>Editar</Button>
+                        <Button variant="destructive" size="sm" onClick={() => openDeleteConfirm(r)}>Excluir</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {sortedData.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    Nenhuma conta recorrente cadastrada.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Mobile Card List View */}
+        <div className="block sm:hidden space-y-2.5">
+          {sortedData.map((r) => {
+            const cat = categories?.find(c => c.id === r.categoryId);
+            const sub = subcategories?.find(s => s.id === r.subcategoryId);
+            return (
+              <div key={r.id} className="p-3.5 rounded-lg border bg-card shadow-sm space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-0.5">
+                    <div className="font-semibold text-sm text-foreground">{r.description || 'Sem descrição'}</div>
+                    <div className="text-xs text-muted-foreground">{cat?.name} {sub ? `> ${sub.name}` : ''}</div>
+                  </div>
+                  <div className={`font-bold text-sm shrink-0 ${r.amount > 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                    {formatCurrency(Math.abs(r.amount))}
+                  </div>
                 </div>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-        {(!data || data.length === 0) && (
-          <TableRow>
-            <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                
+                <div className="flex items-center justify-between pt-1.5 border-t border-border/40 text-xs">
+                  <span className="text-muted-foreground text-[11px]">
+                    Início: {new Date(r.startDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="outline" size="sm" className="h-7 text-xs px-2.5" onClick={() => handleEdit(r)}>
+                      Editar
+                    </Button>
+                    <Button variant="destructive" size="sm" className="h-7 text-xs px-2.5" onClick={() => openDeleteConfirm(r)}>
+                      Excluir
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {sortedData.length === 0 && (
+            <div className="text-center py-6 text-sm text-muted-foreground bg-muted/20 border border-dashed rounded-lg">
               Nenhuma conta recorrente cadastrada.
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
-  );
+            </div>
+          )}
+        </div>
+      </>
+    );
+  };
 
   const selectedSubcat = subcategories?.find(s => s.id === subcategoryId);
   const isTransfer = selectedSubcat?.type === 'Transferência';
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Contas Recorrentes</h1>
-        <Button onClick={() => { resetForm(); setIsOpen(true); }} className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Contas Recorrentes</h1>
+        <Button onClick={() => { resetForm(); setIsOpen(true); }} className="flex items-center justify-center gap-2 w-full sm:w-auto">
           <Plus size={16} /> Nova Recorrência
         </Button>
       </div>

@@ -4,6 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useWallet } from "@/contexts/WalletContext";
 import { getCreditCardBillPeriod, getNaturalBillMonth } from "@/lib/creditCardUtils";
 import { getInstallmentInfo, findFuturePendingInstallments, calculateFutureInstallmentDate, type InstallmentInfo } from "@/lib/installmentUtils";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -628,15 +629,15 @@ export default function Transactions() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">Transações</h1>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Transações</h1>
         
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border">
+        <div className="flex items-center justify-between sm:justify-end gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 bg-muted/40 p-1 rounded-md border w-full sm:w-auto justify-between">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigateMonth(-1)}>
               <ChevronLeft size={16} />
             </Button>
-            <span className="font-bold min-w-[150px] text-center text-sm capitalize">
+            <span className="font-bold min-w-[130px] sm:min-w-[150px] text-center text-xs sm:text-sm capitalize">
               {currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
             </span>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigateMonth(1)}>
@@ -644,18 +645,19 @@ export default function Transactions() {
             </Button>
           </div>
         </div>
+      </div>
 
-        {showUndo && (
-          <div className="w-full bg-green-50 text-green-800 p-3 rounded-md text-sm border border-green-200 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 size={16} />
-              <span>Transação(ões) registrada(s) com sucesso.</span>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleUndo} className="h-8 bg-white text-green-700 hover:bg-green-50 hover:text-green-800 border-green-300">
-              Desfazer Adição
-            </Button>
+      {showUndo && (
+        <div className="w-full bg-green-50 dark:bg-green-950/40 text-green-800 dark:text-green-300 p-3 rounded-md text-xs sm:text-sm border border-green-200 dark:border-green-900 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-green-600 shrink-0" />
+            <span>Transação(ões) registrada(s) com sucesso.</span>
           </div>
-        )}
+          <Button variant="outline" size="sm" onClick={handleUndo} className="h-7 text-xs bg-white dark:bg-gray-800 text-green-700 dark:text-green-300 hover:bg-green-50 border-green-300">
+            Desfazer Adição
+          </Button>
+        </div>
+      )}
         
         <Dialog open={isOpen} onOpenChange={(open) => {
           if (!open) {
@@ -827,9 +829,8 @@ export default function Transactions() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
 
-      <Dialog open={isMoverOpen} onOpenChange={setIsMoverOpen}>
+        <Dialog open={isMoverOpen} onOpenChange={setIsMoverOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Mover Fatura</DialogTitle>
@@ -924,11 +925,16 @@ export default function Transactions() {
         
         return (
           <div key={acc.id} className="mb-8 space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
                 {acc.name}
+                {acc.isCreditCard && (
+                  <span className="text-xs font-normal px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+                    Cartão de Crédito
+                  </span>
+                )}
               </h2>
-              <Button size="sm" className="flex items-center gap-2" onClick={() => {
+              <Button size="sm" className="flex items-center justify-center gap-2 w-full sm:w-auto" onClick={() => {
                 setEditingTransactionId(null);
                 setEditingInstallmentInfo(null);
                 setDate(new Date().toISOString().split("T")[0]);
@@ -947,25 +953,25 @@ export default function Transactions() {
             {acc.isCreditCard && acc.closingDay && acc.dueDay && isMonthFilter && (() => {
               const period = getCreditCardBillPeriod(targetMonthStr, acc.closingDay, acc.dueDay, cardBillPeriods, acc.id);
               return (
-                <div className="bg-blue-50/50 dark:bg-blue-950/20 text-blue-900 dark:text-blue-200 p-4 rounded-lg text-sm border border-blue-200 dark:border-blue-900/50 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="bg-blue-50/60 dark:bg-blue-950/30 text-blue-900 dark:text-blue-200 p-3.5 sm:p-4 rounded-lg text-sm border border-blue-200 dark:border-blue-900/50 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-start sm:items-center gap-3">
                     <span className="text-2xl flex-shrink-0">💳</span>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <strong className="text-base font-semibold">Fatura de {targetMonthStr.split('-').reverse().join('/')}</strong>
+                        <strong className="text-sm sm:text-base font-semibold">Fatura de {targetMonthStr.split('-').reverse().join('/')}</strong>
                         {period.isCustom ? (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
                             ⚡ Vigência Personalizada
                           </span>
                         ) : (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
-                            Automático (Fecha dia {acc.closingDay}, Vence dia {acc.dueDay})
+                            Fecha dia {acc.closingDay}, Vence dia {acc.dueDay}
                           </span>
                         )}
                       </div>
                       <div className="text-xs sm:text-sm opacity-90 space-y-0.5">
                         <div>
-                          <span className="font-medium">Período de compras:</span> {period.startDate.toLocaleDateString('pt-BR')} a {period.endDate.toLocaleDateString('pt-BR')}
+                          <span className="font-medium">Período:</span> {period.startDate.toLocaleDateString('pt-BR')} a {period.endDate.toLocaleDateString('pt-BR')}
                         </div>
                         <div>
                           <span className="font-medium">Vencimento:</span> {period.dueDate.toLocaleDateString('pt-BR')}
@@ -978,7 +984,7 @@ export default function Transactions() {
                     type="button" 
                     variant="outline" 
                     size="sm" 
-                    className="self-start sm:self-auto flex items-center gap-2 bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 border-blue-300 dark:border-blue-700 font-medium"
+                    className="self-stretch sm:self-auto flex items-center justify-center gap-2 bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 border-blue-300 dark:border-blue-700 font-medium"
                     onClick={() => openBillPeriodModal(acc)}
                   >
                     <CalendarDays size={16} />
@@ -988,7 +994,8 @@ export default function Transactions() {
               );
             })()}
             
-            <div className="border rounded-md bg-card">
+            {/* Desktop Table View (hidden on mobile) */}
+            <div className="hidden md:block border rounded-md bg-card overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1017,7 +1024,7 @@ export default function Transactions() {
                       <TableCell>{t.categoryName}</TableCell>
                       <TableCell>
                         {t.description}
-                        {isPending && <span className="ml-2 text-xs font-bold text-orange-500 bg-orange-100 px-1 py-0.5 rounded no-underline">Pendente</span>}
+                        {isPending && <span className="ml-2 text-xs font-bold text-orange-500 bg-orange-100 dark:bg-orange-950 dark:text-orange-300 px-1 py-0.5 rounded no-underline">Pendente</span>}
                       </TableCell>
                       <TableCell className="text-right text-blue-500">
                         {t.amount > 0 ? formatCurrency(t.amount) : '-'}
@@ -1060,6 +1067,115 @@ export default function Transactions() {
                   )}
                 </TableBody>
               </Table>
+            </div>
+
+            {/* Mobile Card List View (hidden on desktop) */}
+            <div className="block md:hidden space-y-3">
+              {/* Opening balance card */}
+              <div className="bg-muted/40 p-3 rounded-lg flex items-center justify-between text-sm border">
+                <span className="text-muted-foreground font-medium text-xs">Saldo Anterior</span>
+                <span className={`font-bold text-sm ${periodOpeningBalance >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                  {formatCurrency(periodOpeningBalance)}
+                </span>
+              </div>
+
+              {/* Transactions Cards */}
+              {accTransactions.map((t) => {
+                const isPending = t.status === 'Pendente';
+                return (
+                  <div 
+                    key={t.id} 
+                    className={cn(
+                      "p-3.5 rounded-lg border bg-card shadow-sm space-y-2.5 transition-all",
+                      isPending && "opacity-80 bg-muted/20 border-dashed"
+                    )}
+                  >
+                    {/* Top Row: Date, Pending Badge, and Reconciled Checkbox */}
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-foreground">
+                          {new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                        </span>
+                        {isPending && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+                            Pendente
+                          </span>
+                        )}
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => toggleReconciled(t)} 
+                        className={cn(
+                          "flex items-center gap-1 p-1 rounded-md transition-colors text-xs",
+                          t.reconciled ? "text-green-600 bg-green-50 dark:bg-green-950/50 font-medium" : "text-muted-foreground hover:text-foreground"
+                        )}
+                        title={t.reconciled ? "Marcar como não conferido" : "Marcar como conferido"}
+                      >
+                        {t.reconciled ? (
+                          <>
+                            <CheckCircle2 size={16} />
+                            <span className="text-[11px]">Conferido</span>
+                          </>
+                        ) : (
+                          <>
+                            <Circle size={16} />
+                            <span className="text-[11px]">Conferir</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Middle Row: Description & Category Badge */}
+                    <div className="space-y-1">
+                      <div className="font-semibold text-sm text-foreground break-words">
+                        {t.description || "Sem descrição"}
+                      </div>
+                      <div className="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted text-muted-foreground">
+                        {t.categoryName}
+                      </div>
+                    </div>
+
+                    {/* Bottom Row: Running balance & Amount */}
+                    <div className="flex items-end justify-between pt-1.5 border-t border-border/50">
+                      <div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Saldo após</div>
+                        <div className={cn("text-xs font-semibold", t.currentBalance >= 0 ? "text-blue-500" : "text-red-500")}>
+                          {formatCurrency(t.currentBalance)}
+                        </div>
+                      </div>
+                      <div className={cn("text-base font-bold tracking-tight", t.amount >= 0 ? "text-blue-500" : "text-red-500")}>
+                        {t.amount > 0 ? `+${formatCurrency(t.amount)}` : formatCurrency(t.amount)}
+                      </div>
+                    </div>
+
+                    {/* Quick Action Buttons */}
+                    <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-border/40 flex-wrap">
+                      <Button variant="outline" size="sm" className="h-7 text-xs px-2.5" onClick={() => handleEdit(t)}>
+                        Editar
+                      </Button>
+                      {isPending && (
+                        <Button variant="default" size="sm" className="h-7 text-xs px-2.5 bg-green-600 hover:bg-green-700 text-white" onClick={() => openBaixa(t)}>
+                          Baixa
+                        </Button>
+                      )}
+                      {acc.isCreditCard && (
+                        <Button variant="secondary" size="sm" className="h-7 text-xs px-2.5" onClick={() => openMover(t)}>
+                          Mover
+                        </Button>
+                      )}
+                      <Button variant="destructive" size="sm" className="h-7 text-xs px-2.5" onClick={() => openDeleteConfirm(t)}>
+                        Excluir
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {accTransactions.length === 0 && (
+                <div className="text-center py-6 text-sm text-muted-foreground bg-muted/20 border border-dashed rounded-lg">
+                  Nenhuma transação encontrada nesta conta neste período.
+                </div>
+              )}
             </div>
           </div>
         );

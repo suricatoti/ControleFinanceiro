@@ -104,7 +104,7 @@ export default function Profile() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight mb-6">Perfil & Configurações</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Perfil & Configurações</h1>
       
       <Card>
         <CardHeader>
