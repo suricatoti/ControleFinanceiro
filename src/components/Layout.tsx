@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Receipt, Tags, User, Repeat, Moon, Sun, Pencil, Trash2, Wallet } from "lucide-react";
+import { LayoutDashboard, Receipt, Tags, User, Repeat, Moon, Sun, Pencil, Trash2, Wallet, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
@@ -26,6 +26,25 @@ export function Layout() {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return (localStorage.getItem("theme") as "light" | "dark") || "light";
   });
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+    }
+  };
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -211,6 +230,20 @@ export function Layout() {
             
             <div className="hidden md:block h-6 w-px bg-border mx-1"></div>
             
+            {/* Install App Button (Desktop / Android Chrome) */}
+            {installPrompt && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleInstallClick}
+                className="h-7 sm:h-8 px-2 sm:px-3 gap-1.5 text-xs font-semibold border-primary/50 text-primary hover:bg-primary/10 transition-all active:scale-95"
+                title="Instalar aplicativo no computador ou celular"
+              >
+                <Download className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Instalar App</span>
+              </Button>
+            )}
+
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
