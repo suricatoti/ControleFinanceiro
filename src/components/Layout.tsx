@@ -1,8 +1,10 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Receipt, Tags, User, Repeat, Moon, Sun, Pencil, Trash2, Wallet, Download } from "lucide-react";
+import { LayoutDashboard, Receipt, Tags, User, Repeat, Moon, Sun, Pencil, Trash2, Wallet, Download, LogOut, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
+import { useBackupStatus, executeBackup, hasUnsavedBackupChanges } from "@/lib/backupManager";
+import { ExitBackupModal } from "@/components/ExitBackupModal";
 import {
   Select,
   SelectContent,
@@ -84,6 +86,62 @@ export function Layout() {
   const handleDeleteWallet = () => {
     if (activeWalletId === 'default') return;
     deleteWallet(activeWalletId);
+  };
+
+  const { hasPendingBackup } = useBackupStatus();
+  const [isExitBackupOpen, setIsExitBackupOpen] = useState(false);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [exitNotification, setExitNotification] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedBackupChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+        setTimeout(() => {
+          setIsExitBackupOpen(true);
+        }, 150);
+        return '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  const handleExitRequest = () => {
+    if (hasUnsavedBackupChanges()) {
+      setIsExitBackupOpen(true);
+    } else {
+      if (window.confirm("Deseja sair do aplicativo?")) {
+        window.close();
+        setExitNotification("Você já pode fechar esta aba ou janela.");
+      }
+    }
+  };
+
+  const handleBackupAndExit = async () => {
+    setIsBackingUp(true);
+    try {
+      const success = await executeBackup(wallets, activeWalletId);
+      if (success) {
+        setIsExitBackupOpen(false);
+        window.close();
+        setExitNotification("Backup baixado com sucesso! Você já pode fechar esta aba com segurança.");
+      } else {
+        alert("Ocorreu um erro ao gerar o arquivo de backup.");
+      }
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const handleExitWithoutBackup = () => {
+    setIsExitBackupOpen(false);
+    window.close();
+    setExitNotification("Sessão finalizada. Você já pode fechar esta aba.");
   };
 
   const links = [
@@ -230,6 +288,20 @@ export function Layout() {
             
             <div className="hidden md:block h-6 w-px bg-border mx-1"></div>
             
+            {/* Pending Backup Badge / Button */}
+            {hasPendingBackup && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsExitBackupOpen(true)}
+                className="h-7 sm:h-8 px-2 sm:px-2.5 gap-1.5 text-xs font-semibold border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 active:scale-95 transition-all"
+                title="Existem dados novos ou modificados que ainda não foram salvos em backup"
+              >
+                <Save className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span className="hidden sm:inline">Backup Pendente</span>
+              </Button>
+            )}
+
             {/* Install App Button (Desktop / Android Chrome) */}
             {installPrompt && (
               <Button
@@ -249,8 +321,19 @@ export function Layout() {
               onClick={toggleTheme}
               className="p-1.5 sm:p-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-95"
               aria-label="Alternar tema claro/escuro"
+              title="Alternar tema claro/escuro"
             >
               {theme === "light" ? <Moon className="w-4 h-4 sm:w-5 sm:h-5" /> : <Sun className="w-4 h-4 sm:w-5 sm:h-5" />}
+            </button>
+
+            {/* Exit App Button */}
+            <button
+              onClick={handleExitRequest}
+              className="p-1.5 sm:p-2 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors active:scale-95"
+              aria-label="Sair do aplicativo"
+              title="Sair do aplicativo"
+            >
+              <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
@@ -258,6 +341,12 @@ export function Layout() {
 
       {/* Main Content Body */}
       <main className="flex-1 container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-8 animate-in fade-in duration-500">
+        {exitNotification && (
+          <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 px-4 py-3 rounded-lg mb-4 flex items-center justify-between text-sm shadow-sm animate-in fade-in">
+            <span>{exitNotification}</span>
+            <Button variant="ghost" size="sm" onClick={() => setExitNotification(null)} className="h-7 text-xs">OK</Button>
+          </div>
+        )}
         <Outlet />
       </main>
 
@@ -351,6 +440,15 @@ export function Layout() {
         }
         confirmText="Excluir Carteira"
         onConfirm={handleDeleteWallet}
+      />
+
+      {/* Modal: Backup antes de Sair */}
+      <ExitBackupModal
+        open={isExitBackupOpen}
+        onOpenChange={setIsExitBackupOpen}
+        onConfirmBackup={handleBackupAndExit}
+        onExitWithoutBackup={handleExitWithoutBackup}
+        isLoading={isBackingUp}
       />
     </div>
   );

@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { AppDatabase } from "@/db/db";
-import { exportDB, importInto } from "dexie-export-import";
+import { importInto } from "dexie-export-import";
+import { executeBackup, markBackupDone, useBackupStatus } from "@/lib/backupManager";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, Upload, Smartphone, Share2, PlusSquare, CheckCircle, HelpCircle } from "lucide-react";
+import { Download, Upload, Smartphone, Share2, PlusSquare, CheckCircle, HelpCircle, AlertCircle, Clock } from "lucide-react";
 
 export default function Profile() {
   const { db, wallets, activeWalletId } = useWallet();
@@ -45,33 +46,15 @@ export default function Profile() {
     }
   };
 
+  const { hasPendingBackup, lastBackupTime } = useBackupStatus();
+
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      
-      const masterBackup = {
-        type: "financas_master_backup",
-        version: 1,
-        wallets: wallets,
-        activeWalletId: activeWalletId,
-        databases: {} as Record<string, any>
-      };
-
-      for (const wallet of wallets) {
-        const tempDb = new AppDatabase(wallet.dbName);
-        const blob = await exportDB(tempDb, { prettyJson: false });
-        const text = await blob.text();
-        masterBackup.databases[wallet.dbName] = JSON.parse(text);
-        tempDb.close();
+      const success = await executeBackup(wallets, activeWalletId);
+      if (!success) {
+        alert("Erro ao exportar banco de dados.");
       }
-
-      const masterBlob = new Blob([JSON.stringify(masterBackup, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(masterBlob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `financas_backup_completo_${new Date().toISOString().split("T")[0]}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Erro ao exportar:", error);
       alert("Erro ao exportar banco de dados.");
@@ -116,12 +99,14 @@ export default function Profile() {
             tempDb.close();
           }
         }
+        markBackupDone();
         alert("Backup global restaurado com sucesso!");
       } else {
         // Restauração Legada (Apenas para a carteira ativa)
         await db.delete();
         await db.open();
         await importInto(db, file, { clearTablesBeforeImport: true });
+        markBackupDone();
         alert("Backup legado restaurado na carteira ativa com sucesso!");
       }
 
@@ -214,6 +199,43 @@ export default function Profile() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Status do Backup */}
+          {hasPendingBackup ? (
+            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg p-3.5 flex items-start gap-3 text-amber-900 dark:text-amber-200 text-sm">
+              <AlertCircle className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+              <div>
+                <div className="font-semibold text-amber-950 dark:text-amber-100">
+                  Backup Pendente
+                </div>
+                <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
+                  Foram identificadas novas inserções ou alterações nos seus dados financeiros que ainda não estão salvas em backup. Faça o backup para garantir a segurança dos seus dados.
+                </p>
+                {lastBackupTime && (
+                  <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 mt-1 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Último backup: {lastBackupTime.toLocaleDateString('pt-BR')} às {lastBackupTime.toLocaleTimeString('pt-BR')}
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3.5 flex items-start gap-3 text-emerald-900 dark:text-emerald-200 text-sm">
+              <CheckCircle className="w-5 h-5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+              <div>
+                <div className="font-semibold text-emerald-950 dark:text-emerald-100">
+                  Backup em dia
+                </div>
+                <p className="text-xs text-emerald-800 dark:text-emerald-300 mt-0.5">
+                  Não há novas alterações pendentes desde o último backup.
+                </p>
+                {lastBackupTime && (
+                  <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 mt-1 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Último backup: {lastBackupTime.toLocaleDateString('pt-BR')} às {lastBackupTime.toLocaleTimeString('pt-BR')}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <Button onClick={handleExport} disabled={isExporting} className="flex-1 flex items-center justify-center gap-2">
               <Download size={18} />

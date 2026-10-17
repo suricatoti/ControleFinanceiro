@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { AppDatabase, db as defaultDb } from '@/db/db';
 import { ensureRecurrencesProjected } from '@/lib/recurrenceUtils';
+import { markDataChanged } from '@/lib/backupManager';
 
 export interface Wallet {
   id: string;
@@ -79,6 +80,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const newWallets = [...wallets, newWallet];
     setWallets(newWallets);
     localStorage.setItem('wallets', JSON.stringify(newWallets));
+    markDataChanged();
     switchWallet(id);
   };
 
@@ -91,6 +93,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const updatedWallets = wallets.map(w => w.id === id ? { ...w, name: newName } : w);
     setWallets(updatedWallets);
     localStorage.setItem('wallets', JSON.stringify(updatedWallets));
+    markDataChanged();
   };
 
   const deleteWallet = (id: string) => {
@@ -108,6 +111,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const newWallets = wallets.filter(w => w.id !== id);
     setWallets(newWallets);
     localStorage.setItem('wallets', JSON.stringify(newWallets));
+    markDataChanged();
     
     if (activeWalletId === id) {
       switchWallet('default');

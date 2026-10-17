@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie';
 import { initialCategories, initialSubcategories } from './initialData';
+import { markDataChanged } from '@/lib/backupManager';
 
 export interface Account {
   id: string;
@@ -70,6 +71,7 @@ export class AppDatabase extends Dexie {
   transactions!: EntityTable<Transaction, 'id'>;
   recurrences!: EntityTable<Recurrence, 'id'>;
   cardBillPeriods!: EntityTable<CardBillPeriod, 'id'>;
+  public isPopulating = false;
 
   constructor(dbName: string) {
     super(dbName);
@@ -83,9 +85,14 @@ export class AppDatabase extends Dexie {
 
     // Popula o banco com cadastros iniciais caso ele esteja vazio (nova instalação)
     this.on('populate', async () => {
-      // Como o usuário pediu, não vamos inserir contas iniciais, apenas categorias e subcategorias
-      await this.categories.bulkAdd(initialCategories);
-      await this.subcategories.bulkAdd(initialSubcategories as any);
+      this.isPopulating = true;
+      try {
+        // Como o usuário pediu, não vamos inserir contas iniciais, apenas categorias e subcategorias
+        await this.categories.bulkAdd(initialCategories);
+        await this.subcategories.bulkAdd(initialSubcategories as any);
+      } finally {
+        this.isPopulating = false;
+      }
     });
 
     this.version(2).stores({
@@ -120,6 +127,29 @@ export class AppDatabase extends Dexie {
 
     this.version(8).stores({
       transactions: 'id, date, accountId, categoryId, subcategoryId, recurringGroupId, installmentGroupId, status, creditCardBillDate'
+    });
+
+    // Hooks para rastrear automaticamente qualquer alteração de dados no banco
+    const monitoredTables = ['accounts', 'categories', 'subcategories', 'transactions', 'recurrences', 'cardBillPeriods'] as const;
+    monitoredTables.forEach(tableName => {
+      const table = this[tableName];
+      if (table && typeof table.hook === 'function') {
+        table.hook('creating', () => {
+          if (!this.isPopulating) {
+            markDataChanged();
+          }
+        });
+        table.hook('updating', () => {
+          if (!this.isPopulating) {
+            markDataChanged();
+          }
+        });
+        table.hook('deleting', () => {
+          if (!this.isPopulating) {
+            markDataChanged();
+          }
+        });
+      }
     });
   }
 }

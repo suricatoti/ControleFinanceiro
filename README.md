@@ -44,10 +44,25 @@ O Controle Financeiro é um **Progressive Web App (PWA)**. Ele pode ser instalad
 
 ---
 
-### 💻 No Computador (Windows, Mac ou Linux)
-1. Abra o link no **Google Chrome** ou **Microsoft Edge**.
-2. Clique no ícone de instalação ⊕ no canto direito da barra de endereços (ou menu `...` > *Instalar Controle Financeiro*).
-3. Um atalho será criado na sua **Área de Trabalho** e no **Menu Iniciar**, rodando em janela própria como um software desktop.
+### 💻 No Computador ou Notebook (Windows, Mac ou Linux)
+
+Você pode instalar o Controle Financeiro no computador de qualquer uma das seguintes formas:
+
+#### Opção 1: Pelo botão direto no próprio App
+1. Abra o link no navegador (Chrome, Edge ou Brave).
+2. Clique no botão **"📥 Instalar App"** que aparece no cabeçalho superior ou na tela de **Perfil**.
+3. Na janela de confirmação, clique em **"Instalar"**.
+
+#### Opção 2: Pela Barra de Endereços do Navegador
+- **No Google Chrome / Brave:** No canto direito da barra de endereços (ao lado do ícone de favoritos), clique no ícone **⊕ (Instalar aplicativo)** e confirme.
+- **No Microsoft Edge:** No canto direito da barra de endereços, clique no ícone de **telas com o símbolo + (Instalar este site como aplicativo)**.
+
+#### Opção 3: Pelo Menu do Navegador
+- **No Google Chrome:** Clique nos **3 pontinhos `⋮`** no canto superior direito -> passe o mouse em **"Transmitir, salvar e compartilhar"** (ou *"Salvar e compartilhar"*) -> clique em **"Instalar Controle Financeiro..."** (ou *"Criar atalho..."* marcando a opção *"Abrir como janela"*).
+- **No Microsoft Edge:** Clique no menu **`...`** no canto superior direito -> **"Aplicativos"** -> **"Instalar este site como um aplicativo"**.
+- **No Mac (Safari no macOS Sonoma ou superior):** Abra o link no Safari -> clique no menu superior **Arquivo** (*File*) -> **"Adicionar ao Dock"** (*Add to Dock*).
+
+> **Resultado:** Um ícone é criado na sua **Área de Trabalho**, no **Menu Iniciar** ou no **Dock**, rodando em janela própria dedicada como um programa nativo, com suporte 100% offline!
 
 ---
 
