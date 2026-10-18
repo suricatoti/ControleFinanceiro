@@ -2,11 +2,25 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from "path"
 import { VitePWA } from 'vite-plugin-pwa'
+import { APP_VERSION } from './src/version.ts'
 
 export default defineConfig({
   base: './',
   plugins: [
     react(),
+    {
+      name: 'generate-version-json',
+      generateBundle() {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'version.json',
+          source: JSON.stringify({
+            version: APP_VERSION,
+            buildTime: Date.now()
+          }, null, 2)
+        })
+      }
+    },
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png', 'favicon.svg', 'icons.svg'],
@@ -40,6 +54,12 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
+        runtimeCaching: [
+          {
+            urlPattern: /version\.json/,
+            handler: 'NetworkOnly',
+          }
+        ]
       }
     })
   ],
@@ -49,4 +69,3 @@ export default defineConfig({
     },
   },
 })
-

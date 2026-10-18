@@ -1,6 +1,7 @@
 import { APP_VERSION } from "@/version";
 
 const VERSION_STORAGE_KEY = "controle_financeiro_app_version";
+const BUILD_TIME_STORAGE_KEY = "controle_financeiro_build_time";
 
 export interface VersionStatus {
   version: string;
@@ -9,9 +10,79 @@ export interface VersionStatus {
 }
 
 /**
- * Verifica se a versão atual difere da versão salva anteriormente no navegador.
- * Se houver uma nova versão, limpa caches estáticos (CacheStorage) de forma segura,
- * preservando intactos o IndexedDB (dados financeiros) e as preferências do usuário.
+ * Consulta o arquivo version.json diretamente no servidor remoto/GitHub Pages (sem cache).
+ * Se o servidor tiver uma versão ou compilação mais nova que a local:
+ * - Limpa os caches estáticos da tela automaticamente.
+ * - Atualiza os registros locais.
+ * - Recarrega a página de forma transparente para aplicar as melhorias.
+ */
+export async function checkRemoteVersionAndAutoUpdate(): Promise<void> {
+  if (typeof window === "undefined" || !navigator.onLine) return;
+
+  try {
+    const response = await fetch(`./version.json?t=${Date.now()}`, {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+      },
+    });
+
+    if (!response.ok) return;
+
+    const remote: { version: string; buildTime: number } = await response.json();
+    if (!remote || !remote.version) return;
+
+    const storedVersion = localStorage.getItem(VERSION_STORAGE_KEY);
+    const storedBuildTime = localStorage.getItem(BUILD_TIME_STORAGE_KEY);
+
+    const hasNewVersion = Boolean(
+      (storedVersion && storedVersion !== remote.version) ||
+      (storedBuildTime && Number(storedBuildTime) !== remote.buildTime)
+    );
+
+    if (hasNewVersion) {
+      console.info(
+        `[VersionManager] Nova versão detectada no servidor: v${remote.version} (${remote.buildTime}). Atualizando automaticamente...`
+      );
+
+      // Limpa os caches estáticos obsoletos (não afeta o banco de dados)
+      await clearAppCaches();
+
+      localStorage.setItem(VERSION_STORAGE_KEY, remote.version);
+      localStorage.setItem(BUILD_TIME_STORAGE_KEY, String(remote.buildTime));
+      sessionStorage.setItem("just_updated_version", `v${remote.version}`);
+
+      // Atualiza service worker se existente
+      if ("serviceWorker" in navigator) {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const reg of registrations) {
+            await reg.update();
+          }
+        } catch (e) {
+          console.warn("[VersionManager] Falha ao atualizar service workers:", e);
+        }
+      }
+
+      // Recarrega automaticamente a página para carregar a versão nova
+      window.location.reload();
+      return;
+    }
+
+    // Primeiro acesso: armazena a versão e o buildTime
+    if (!storedVersion || !storedBuildTime) {
+      localStorage.setItem(VERSION_STORAGE_KEY, remote.version);
+      localStorage.setItem(BUILD_TIME_STORAGE_KEY, String(remote.buildTime));
+    }
+  } catch (_err) {
+    // Se estiver offline ou a rede falhar, continua normalmente sem interromper o usuário
+    console.debug("[VersionManager] Checagem remota indisponível no momento.");
+  }
+}
+
+/**
+ * Verifica se a versão atual do código difere da versão salva anteriormente no navegador.
  */
 export async function checkAndCleanVersionCache(): Promise<VersionStatus> {
   if (typeof window === "undefined") {
@@ -22,9 +93,8 @@ export async function checkAndCleanVersionCache(): Promise<VersionStatus> {
   const isNewVersion = storedVersion !== null && storedVersion !== APP_VERSION;
 
   if (isNewVersion) {
-    console.info(`[VersionManager] Nova versão detectada: v${APP_VERSION} (anterior: v${storedVersion}). Limpando caches estáticos...`);
+    console.info(`[VersionManager] Nova versão detectada: v${APP_VERSION} (anterior: v${storedVersion}). Limpando caches...`);
     await clearAppCaches();
-    // Armazena flag temporária para notificar o usuário na interface
     sessionStorage.setItem("just_updated_version", `De v${storedVersion} para v${APP_VERSION}`);
   }
 
@@ -59,7 +129,6 @@ export async function clearAppCaches(): Promise<void> {
 export async function forceCleanCacheAndReload(): Promise<void> {
   await clearAppCaches();
 
-  // Solicita atualização de eventuais Service Workers registrados
   if ("serviceWorker" in navigator) {
     try {
       const registrations = await navigator.serviceWorker.getRegistrations();
@@ -71,7 +140,6 @@ export async function forceCleanCacheAndReload(): Promise<void> {
     }
   }
 
-  // Recarrega forçando busca no servidor
   const cleanUrl = window.location.origin + window.location.pathname + (window.location.hash || "#/");
   window.location.replace(cleanUrl);
   window.location.reload();
