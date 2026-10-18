@@ -327,14 +327,16 @@ export function Layout() {
             </button>
 
             {/* Exit App Button */}
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleExitRequest}
-              className="p-1.5 sm:p-2 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors active:scale-95"
-              aria-label="Sair do aplicativo"
-              title="Sair do aplicativo"
+              className="h-7 sm:h-8 px-2 sm:px-2.5 gap-1.5 text-xs font-semibold border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-500/50 transition-all active:scale-95"
+              title="Sair do aplicativo com segurança"
             >
-              <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sair</span>
+            </Button>
           </div>
         </div>
       </header>
