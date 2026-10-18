@@ -1,7 +1,9 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Receipt, Tags, User, Repeat, Moon, Sun, Pencil, Trash2, Wallet, Download, LogOut, Save } from "lucide-react";
+import { LayoutDashboard, Receipt, Tags, User, Repeat, Moon, Sun, Pencil, Trash2, Wallet, Download, LogOut, Save, RotateCcw, CheckCircle2, Sparkles, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { APP_VERSION } from "@/version";
+import { forceCleanCacheAndReload } from "@/lib/versionManager";
 import { useWallet } from "@/contexts/WalletContext";
 import { useBackupStatus, executeBackup, hasUnsavedBackupChanges } from "@/lib/backupManager";
 import { ExitBackupModal } from "@/components/ExitBackupModal";
@@ -93,6 +95,27 @@ export function Layout() {
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [exitNotification, setExitNotification] = useState<string | null>(null);
 
+  const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
+  const [isClearingCache, setIsClearingCache] = useState(false);
+  const [updateNotification, setUpdateNotification] = useState<string | null>(() => {
+    const notice = sessionStorage.getItem("just_updated_version");
+    if (notice) {
+      sessionStorage.removeItem("just_updated_version");
+      return `Sistema atualizado com sucesso (${notice})! Caches anteriores renovados.`;
+    }
+    return null;
+  });
+
+  const handleForceClearCache = async () => {
+    setIsClearingCache(true);
+    try {
+      await forceCleanCacheAndReload();
+    } catch (e) {
+      console.error(e);
+      setIsClearingCache(false);
+    }
+  };
+
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedBackupChanges()) {
@@ -164,6 +187,16 @@ export function Layout() {
               <span className="text-xl sm:text-2xl drop-shadow-sm">💰</span>
               <span className="hidden xs:inline sm:inline">Finanças</span>
             </Link>
+
+            {/* Version Badge */}
+            <button
+              onClick={() => setIsVersionModalOpen(true)}
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 active:scale-95 transition-all select-none shrink-0"
+              title="Versão do sistema - Clique para detalhes ou limpar cache"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>v{APP_VERSION}</span>
+            </button>
             
             {/* Desktop Wallet Selector */}
             <div className="hidden md:flex items-center gap-2 border-l pl-4 lg:pl-6 h-8">
@@ -343,6 +376,15 @@ export function Layout() {
 
       {/* Main Content Body */}
       <main className="flex-1 container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-8 animate-in fade-in duration-500">
+        {updateNotification && (
+          <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 px-4 py-3 rounded-lg mb-4 flex items-center justify-between text-sm shadow-sm animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>{updateNotification}</span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setUpdateNotification(null)} className="h-7 text-xs">OK</Button>
+          </div>
+        )}
         {exitNotification && (
           <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 px-4 py-3 rounded-lg mb-4 flex items-center justify-between text-sm shadow-sm animate-in fade-in">
             <span>{exitNotification}</span>
@@ -452,6 +494,62 @@ export function Layout() {
         onExitWithoutBackup={handleExitWithoutBackup}
         isLoading={isBackingUp}
       />
+
+      {/* Dialog: Versão do Sistema e Limpeza de Cache */}
+      <Dialog open={isVersionModalOpen} onOpenChange={setIsVersionModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <span className="text-xl">🚀</span>
+              <span>Versão do Sistema</span>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/60 border">
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">Versão Instalada</p>
+                <p className="text-lg font-bold text-foreground">v{APP_VERSION}</p>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Atualizado</span>
+              </div>
+            </div>
+
+            <div className="text-xs text-muted-foreground space-y-2 leading-relaxed">
+              <p>
+                O sistema é atualizado automaticamente. Toda vez que uma nova versão é lançada, os caches estáticos anteriores são apagados ao entrar para carregar as melhorias imediatamente.
+              </p>
+              <div className="p-2.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                <Info className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Seus dados estão protegidos:</strong> A limpeza de cache afeta apenas arquivos visuais (código e estilo). Seus lançamentos, contas e carteiras continuam 100% seguros no banco de dados local.
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2">
+              <Button 
+                variant="outline" 
+                onClick={handleForceClearCache}
+                disabled={isClearingCache}
+                className="w-full gap-2 font-medium border-primary/40 hover:bg-primary/10"
+              >
+                <RotateCcw className={cn("w-4 h-4", isClearingCache && "animate-spin")} />
+                <span>{isClearingCache ? "Limpando e recarregando..." : "Forçar Limpeza de Cache e Recarregar"}</span>
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => setIsVersionModalOpen(false)}
+                className="w-full text-xs text-muted-foreground"
+              >
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
