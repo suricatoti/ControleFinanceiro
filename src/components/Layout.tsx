@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { APP_VERSION } from "@/version";
 import { forceCleanCacheAndReload } from "@/lib/versionManager";
 import { useWallet } from "@/contexts/WalletContext";
-import { useBackupStatus, executeBackup, hasUnsavedBackupChanges } from "@/lib/backupManager";
+import { useBackupStatus, executeBackupWithDetails, hasUnsavedBackupChanges } from "@/lib/backupManager";
 import { ExitBackupModal } from "@/components/ExitBackupModal";
 import {
   Select,
@@ -90,10 +90,27 @@ export function Layout() {
     deleteWallet(activeWalletId);
   };
 
-  const { hasPendingBackup } = useBackupStatus();
+  const { hasPendingBackup, driveConfig, driveSessionActive } = useBackupStatus();
   const [isExitBackupOpen, setIsExitBackupOpen] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [exitNotification, setExitNotification] = useState<string | null>(null);
+
+  // Sincronização automática silenciosa com Google Drive quando a sessão está ativa
+  useEffect(() => {
+    if (!hasPendingBackup || !driveConfig.enabled || !driveConfig.autoBackup || !driveSessionActive) {
+      return;
+    }
+    if (!wallets || wallets.length === 0) return;
+
+    const timer = setTimeout(() => {
+      executeBackupWithDetails(wallets, activeWalletId, {
+        mode: 'drive',
+        interactive: false,
+      }).catch(console.error);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [hasPendingBackup, driveConfig.enabled, driveConfig.autoBackup, driveSessionActive, wallets, activeWalletId]);
 
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
@@ -148,13 +165,40 @@ export function Layout() {
   const handleBackupAndExit = async () => {
     setIsBackingUp(true);
     try {
-      const success = await executeBackup(wallets, activeWalletId);
-      if (success) {
+      const result = await executeBackupWithDetails(wallets, activeWalletId, {
+        mode: 'auto',
+        interactive: true,
+        fallbackToLocalOnError: true,
+      });
+      if (result.success) {
         setIsExitBackupOpen(false);
         window.close();
-        setExitNotification("Backup baixado com sucesso! Você já pode fechar esta aba com segurança.");
+        if (result.destination === 'drive') {
+          setExitNotification(`Backup salvo no Google Drive (pasta "${result.folderName}") com sucesso! Você já pode fechar esta aba.`);
+        } else {
+          setExitNotification("Backup baixado na pasta Downloads com sucesso! Você já pode fechar esta aba com segurança.");
+        }
       } else {
-        alert("Ocorreu um erro ao gerar o arquivo de backup.");
+        alert(result.error || "Ocorreu um erro ao gerar o arquivo de backup.");
+      }
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const handleLocalBackupAndExit = async () => {
+    setIsBackingUp(true);
+    try {
+      const result = await executeBackupWithDetails(wallets, activeWalletId, {
+        mode: 'local',
+        interactive: false,
+      });
+      if (result.success) {
+        setIsExitBackupOpen(false);
+        window.close();
+        setExitNotification("Backup baixado na pasta Downloads com sucesso! Você já pode fechar esta aba com segurança.");
+      } else {
+        alert(result.error || "Ocorreu um erro ao gerar o arquivo de backup.");
       }
     } finally {
       setIsBackingUp(false);
@@ -491,6 +535,7 @@ export function Layout() {
         open={isExitBackupOpen}
         onOpenChange={setIsExitBackupOpen}
         onConfirmBackup={handleBackupAndExit}
+        onConfirmLocalBackup={handleLocalBackupAndExit}
         onExitWithoutBackup={handleExitWithoutBackup}
         isLoading={isBackingUp}
       />

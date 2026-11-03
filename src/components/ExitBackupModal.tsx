@@ -7,12 +7,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, LogOut, X, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Download, LogOut, X, AlertTriangle, ShieldCheck, CloudUpload } from "lucide-react";
+import { useBackupStatus } from "@/lib/backupManager";
 
 interface ExitBackupModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirmBackup: () => Promise<void>;
+  onConfirmLocalBackup?: () => Promise<void>;
   onExitWithoutBackup: () => void;
   isLoading?: boolean;
 }
@@ -21,9 +23,14 @@ export function ExitBackupModal({
   open,
   onOpenChange,
   onConfirmBackup,
+  onConfirmLocalBackup,
   onExitWithoutBackup,
   isLoading = false,
 }: ExitBackupModalProps) {
+  const { driveConfig } = useBackupStatus();
+  const isDriveEnabled = driveConfig.enabled;
+  const folderName = driveConfig.folderName || "Controle Financeiro - Backups";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[620px] max-h-[92vh] overflow-y-auto p-5 sm:p-7 gap-5">
@@ -37,7 +44,7 @@ export function ExitBackupModal({
                 Backup dos Dados Financeiros
               </DialogTitle>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Alterações recentes identificadas que ainda não foram salvas em arquivo
+                Alterações recentes identificadas que ainda não foram salvas em backup
               </p>
             </div>
           </div>
@@ -45,18 +52,30 @@ export function ExitBackupModal({
           <DialogDescription asChild>
             <div className="text-sm text-foreground/80 space-y-3 pt-1 text-left">
               <p className="leading-relaxed">
-                Foram identificadas <strong>novas inserções ou modificações nos seus lançamentos</strong> que ainda não foram salvas em um arquivo de backup.
+                Foram identificadas <strong>novas inserções ou modificações nos seus lançamentos</strong> que ainda não foram salvas em backup.
               </p>
 
-              <div className="bg-amber-500/10 dark:bg-amber-950/40 border border-amber-500/30 rounded-xl p-3.5 sm:p-4 text-xs sm:text-sm text-amber-900 dark:text-amber-200 space-y-1.5 leading-relaxed">
-                <div className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-300">
-                  <ShieldCheck className="w-4 h-4 shrink-0" />
-                  <span>Por que o backup é importante?</span>
+              {isDriveEnabled ? (
+                <div className="bg-blue-500/10 dark:bg-blue-950/40 border border-blue-500/30 rounded-xl p-3.5 sm:p-4 text-xs sm:text-sm text-blue-900 dark:text-blue-200 space-y-1.5 leading-relaxed">
+                  <div className="flex items-center gap-2 font-semibold text-blue-800 dark:text-blue-300">
+                    <CloudUpload className="w-4 h-4 shrink-0" />
+                    <span>Google Drive Conectado</span>
+                  </div>
+                  <p className="text-xs text-blue-900/90 dark:text-blue-200/90">
+                    Seu backup será enviado automaticamente para a pasta <strong>"{folderName}"</strong> no seu Google Drive{driveConfig.userEmail ? ` (${driveConfig.userEmail})` : ""}.
+                  </p>
                 </div>
-                <p className="text-xs text-amber-900/90 dark:text-amber-200/90">
-                  Seus dados financeiros ficam salvos de forma privada e segura <strong>na memória local deste navegador</strong>. Fazer o download do arquivo de backup garante que você não perca seu histórico caso limpe o cache do navegador ou troque de computador.
-                </p>
-              </div>
+              ) : (
+                <div className="bg-amber-500/10 dark:bg-amber-950/40 border border-amber-500/30 rounded-xl p-3.5 sm:p-4 text-xs sm:text-sm text-amber-900 dark:text-amber-200 space-y-1.5 leading-relaxed">
+                  <div className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-300">
+                    <ShieldCheck className="w-4 h-4 shrink-0" />
+                    <span>Por que o backup é importante?</span>
+                  </div>
+                  <p className="text-xs text-amber-900/90 dark:text-amber-200/90">
+                    Seus dados financeiros ficam salvos de forma privada e segura <strong>na memória local deste navegador</strong>. Fazer o download do arquivo na pasta <strong>Downloads</strong> (ou conectar seu Google Drive na aba Perfil) garante que você não perca seu histórico.
+                  </p>
+                </div>
+              )}
             </div>
           </DialogDescription>
         </DialogHeader>
@@ -85,14 +104,37 @@ export function ExitBackupModal({
               Não, apenas sair
             </Button>
 
+            {isDriveEnabled && onConfirmLocalBackup && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onConfirmLocalBackup}
+                disabled={isLoading}
+                className="w-full sm:w-auto justify-center gap-1.5 text-xs sm:text-sm"
+                title="Baixar arquivo na pasta Downloads deste dispositivo"
+              >
+                <Download className="w-4 h-4 shrink-0" />
+                <span>Baixar Local</span>
+              </Button>
+            )}
+
             <Button
               type="button"
               onClick={onConfirmBackup}
               disabled={isLoading}
               className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm justify-center gap-1.5 text-xs sm:text-sm"
             >
-              <Download className="w-4 h-4 shrink-0" />
-              <span>{isLoading ? "Gerando Backup..." : "Sim, fazer backup"}</span>
+              {isDriveEnabled ? (
+                <>
+                  <CloudUpload className="w-4 h-4 shrink-0" />
+                  <span>{isLoading ? "Salvando no Drive..." : "Salvar no Google Drive"}</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 shrink-0" />
+                  <span>{isLoading ? "Gerando Backup..." : "Sim, baixar backup"}</span>
+                </>
+              )}
             </Button>
           </div>
         </DialogFooter>
