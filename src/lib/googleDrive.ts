@@ -295,12 +295,20 @@ export async function listDriveAppFolders(): Promise<DriveFolder[]> {
   });
 
   if (!response.ok) {
+    let errorDetails = "";
+    try {
+      const errJson = await response.json();
+      errorDetails = errJson?.error?.message || "";
+    } catch {
+      // Ignora erro de parse
+    }
+
     if (response.status === 401) {
       inMemoryAccessToken = null;
       inMemoryTokenExpiry = 0;
       notifyDriveStatusChanged();
     }
-    throw new Error("Erro ao listar pastas do Google Drive.");
+    throw new Error(errorDetails ? `Erro no Drive: ${errorDetails}` : "Erro ao listar pastas do Google Drive.");
   }
 
   const data = await response.json();
@@ -329,7 +337,14 @@ export async function createDriveFolder(folderName: string): Promise<DriveFolder
   });
 
   if (!response.ok) {
-    throw new Error("Não foi possível criar a pasta no Google Drive.");
+    let errorDetails = "";
+    try {
+      const errJson = await response.json();
+      errorDetails = errJson?.error?.message || "";
+    } catch {
+      // Ignora erro de parse
+    }
+    throw new Error(errorDetails ? `Erro ao criar pasta: ${errorDetails}` : "Não foi possível criar a pasta no Google Drive.");
   }
 
   const folder = (await response.json()) as DriveFolder;
