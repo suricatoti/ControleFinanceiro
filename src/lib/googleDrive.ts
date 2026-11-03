@@ -63,15 +63,18 @@ function notifyDriveStatusChanged() {
   window.dispatchEvent(new CustomEvent("googleDriveConfigChanged"));
 }
 
+const DEFAULT_GOOGLE_CLIENT_ID =
+  "195749221225-ih1abqn9t21f5nc33pstt9bfmn3s579a.apps.googleusercontent.com";
+
 /**
- * Obtém o Client ID configurado via variável de ambiente (.env).
+ * Obtém o Client ID configurado via variável de ambiente (.env) ou padrão do app.
  */
 export function getGoogleClientId(): string {
   const envClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   if (envClientId && typeof envClientId === "string" && envClientId.trim() !== "") {
     return envClientId.trim();
   }
-  return "";
+  return DEFAULT_GOOGLE_CLIENT_ID;
 }
 
 /**
