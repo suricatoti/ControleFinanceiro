@@ -920,7 +920,8 @@ export default function Transactions() {
       </Dialog>
 
       {accounts?.map(acc => {
-        const accTransactions = filteredTransactions.filter(t => t.accountId === acc.id);
+        // Exibe da mais recente para a mais antiga (o saldo corrente já foi calculado em ordem cronológica)
+        const accTransactions = filteredTransactions.filter(t => t.accountId === acc.id).reverse();
         const periodOpeningBalance = openingBalances[acc.id] || 0;
         
         return (
@@ -1009,13 +1010,6 @@ export default function Transactions() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableRow className="bg-muted/30">
-                    <TableCell colSpan={5} className="font-medium text-muted-foreground">Saldo Anterior</TableCell>
-                    <TableCell className={`text-right font-bold ${periodOpeningBalance >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
-                      {formatCurrency(periodOpeningBalance)}
-                    </TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
                   {accTransactions.map((t) => {
                     const isPending = t.status === 'Pendente';
                     return (
@@ -1065,20 +1059,19 @@ export default function Transactions() {
                       </TableCell>
                     </TableRow>
                   )}
+                  <TableRow className="bg-muted/30">
+                    <TableCell colSpan={5} className="font-medium text-muted-foreground">Saldo Anterior</TableCell>
+                    <TableCell className={`text-right font-bold ${periodOpeningBalance >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                      {formatCurrency(periodOpeningBalance)}
+                    </TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </div>
 
             {/* Mobile Card List View (hidden on desktop) */}
             <div className="block md:hidden space-y-3">
-              {/* Opening balance card */}
-              <div className="bg-muted/40 p-3 rounded-lg flex items-center justify-between text-sm border">
-                <span className="text-muted-foreground font-medium text-xs">Saldo Anterior</span>
-                <span className={`font-bold text-sm ${periodOpeningBalance >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
-                  {formatCurrency(periodOpeningBalance)}
-                </span>
-              </div>
-
               {/* Transactions Cards */}
               {accTransactions.map((t) => {
                 const isPending = t.status === 'Pendente';
@@ -1176,6 +1169,14 @@ export default function Transactions() {
                   Nenhuma transação encontrada nesta conta neste período.
                 </div>
               )}
+
+              {/* Opening balance card */}
+              <div className="bg-muted/40 p-3 rounded-lg flex items-center justify-between text-sm border">
+                <span className="text-muted-foreground font-medium text-xs">Saldo Anterior</span>
+                <span className={`font-bold text-sm ${periodOpeningBalance >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                  {formatCurrency(periodOpeningBalance)}
+                </span>
+              </div>
             </div>
           </div>
         );
